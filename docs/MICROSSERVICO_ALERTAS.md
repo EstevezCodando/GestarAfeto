@@ -314,3 +314,28 @@ gestarafeto.alertas.integracao-automatica=false
 
 44 testes no microsservico e 14 no servico principal cobrem esta entrega. Detalhes em
 [`TESTING.md`](TESTING.md).
+
+## Nota de implementacao: o verbo PATCH e o cliente Feign
+
+As transicoes de estado do alerta (`/leitura`, `/resolucao`, `/cancelamento`) usam `PATCH`, que
+e o verbo correto para uma alteracao parcial de estado. Com os dois servicos no ar, essas
+chamadas falhavam com `Invalid HTTP method: PATCH` e caiam no fallback, apesar de o
+microsservico responder normalmente quando chamado direto.
+
+A causa e que o cliente HTTP padrao do Feign usa `java.net.HttpURLConnection`, que **nao
+suporta PATCH**. A correcao preserva a semantica REST e troca o cliente:
+
+```xml
+<dependency>
+    <groupId>io.github.openfeign</groupId>
+    <artifactId>feign-hc5</artifactId>
+</dependency>
+```
+
+```properties
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+```
+
+O defeito passou pelos testes de integracao porque todos substituem o `AlertaClient` por um
+mock. `AlertaClientHttpTest` cobre essa lacuna exercitando o Feign real contra um servidor HTTP
+em memoria e verificando o verbo trafegado.

@@ -12,6 +12,7 @@ O sistema passa a ter dois servicos:
 ## Indice rapido
 
 - [Microsservico de alertas](docs/MICROSSERVICO_ALERTAS.md)
+- [Roteiro de demonstracao](docs/ROTEIRO_DEMONSTRACAO.md)
 - [Arquitetura e diagramas](docs/ARCHITECTURE.md)
 - [Design da persistencia](docs/PERSISTENCE.md)
 - [Testes automatizados](docs/TESTING.md)
@@ -79,7 +80,7 @@ cd alertas-service
 .\mvnw.cmd test
 ```
 
-Sao 27 testes no servico principal e 44 no microsservico. A suite inclui testes de repositories, integridade, ordenacao, auditoria, regras de alerta, integracao entre servicos e migrations com PostgreSQL via Testcontainers. O teste de Testcontainers e desabilitado automaticamente se Docker nao estiver disponivel.
+Sao 32 testes no servico principal e 44 no microsservico (76 no total). A suite inclui testes de repositories, integridade, ordenacao, auditoria, regras de alerta, integracao entre servicos e migrations com PostgreSQL via Testcontainers. O teste de Testcontainers e desabilitado automaticamente se Docker nao estiver disponivel.
 
 ## Historico de alteracoes
 

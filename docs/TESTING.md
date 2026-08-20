@@ -11,7 +11,7 @@ cd alertas-service
 .\mvnw.cmd test
 ```
 
-Total: **27 testes** no servico principal (1 ignorado sem Docker) e **44** no microsservico.
+Total: **76 testes** — 32 no servico principal (1 ignorado sem Docker) e 44 no microsservico.
 
 ## Servico principal
 
@@ -36,6 +36,15 @@ Total: **27 testes** no servico principal (1 ignorado sem Docker) e **44** no mi
   quando uma acao da usuaria nao pode ser concluida e degradacao para lista vazia nas leituras.
 - `AlertaClientFallbackFactoryTest`: documenta a degradacao assimetrica do circuit breaker
   (leituras vazias, acoes explicitas com erro visivel).
+- `AlertaClientHttpTest`: exercita o cliente Feign **sobre HTTP real**, contra um servidor stub
+  em memoria, verificando o verbo efetivamente trafegado em cada operacao.
+
+O `AlertaClientHttpTest` existe por um motivo concreto. Os demais testes de integracao
+substituem o `AlertaClient` por um mock, o que valida a traducao do dominio mas deixa a camada
+de transporte descoberta — e foi por ali que passou um defeito real: o cliente HTTP padrao do
+Feign (`HttpURLConnection`) nao suporta o verbo `PATCH`, entao as transicoes de estado do alerta
+falhavam com "Invalid HTTP method: PATCH" apenas com os dois servicos no ar. A correcao foi
+trocar o cliente por Apache HttpClient 5 (`feign-hc5`); o teste falha sem ela e passa com ela.
 
 ## Microsservico de alertas
 
