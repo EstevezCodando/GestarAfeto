@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GestarAfeto — Documentação Arquitetural</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --purple: #7c3aed; --purple-light: #ede9fe; --purple-dark: #5b21b6;
+      --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+      --slate-400: #94a3b8; --slate-600: #475569; --slate-700: #334155; --slate-900: #0f172a;
+      --sidebar-w: 268px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--slate-50); color: var(--slate-900); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* HEADER */
+    header { background: var(--purple); color: white; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    header .brand { display: flex; align-items: center; gap: .75rem; }
+    header h1 { font-size: 1.25rem; font-weight: 700; }
+    header p { font-size: .8rem; opacity: .8; }
+    .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.2); color: white; letter-spacing: .05em; }
+    header nav a { color: rgba(255,255,255,.85); text-decoration: none; font-size: .85rem; margin-left: 1rem; }
+    header nav a:hover { color: white; }
+
+    /* LAYOUT */
+    .layout { display: flex; flex: 1; }
+
+    /* SIDEBAR */
+    aside { width: var(--sidebar-w); background: white; border-right: 1px solid var(--slate-200); position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto; flex-shrink: 0; }
+    aside .sidebar-inner { padding: 1rem 0; }
+    .sidebar-group { margin-bottom: .25rem; }
+    .sidebar-group-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--slate-400); padding: .75rem 1rem .25rem; }
+    aside a { display: flex; align-items: center; gap: .5rem; padding: .45rem 1rem; font-size: .82rem; color: var(--slate-600); text-decoration: none; border-left: 3px solid transparent; transition: all .15s; }
+    aside a:hover { background: var(--purple-light); color: var(--purple); border-left-color: var(--purple); }
+    aside a.active { background: var(--purple-light); color: var(--purple); border-left-color: var(--purple); font-weight: 600; }
+    .icon { font-size: .9rem; width: 1.1rem; text-align: center; }
+
+    /* MAIN */
+    main { flex: 1; padding: 2rem; overflow: auto; max-width: 980px; }
+
+    /* SECTIONS */
+    .section { margin-bottom: 2.5rem; scroll-margin-top: 74px; }
+    .section-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 2px solid var(--purple-light); }
+    .section-header .num { display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: var(--purple); color: white; border-radius: 6px; font-size: .8rem; font-weight: 700; flex-shrink: 0; }
+    .section-header h2 { font-size: 1.15rem; font-weight: 700; color: var(--slate-900); }
+    .section-header .tag { font-size: .7rem; padding: .15rem .5rem; border-radius: 4px; font-weight: 600; background: var(--slate-100); color: var(--slate-600); }
+    .tag-novo { background: #dcfce7; color: #166534; }
+    .tag-seq { background: #dbeafe; color: #1d4ed8; }
+    .tag-api { background: #fef3c7; color: #92400e; }
+    .tag-tp2 { background: #fce7f3; color: #9d174d; }
+
+    /* CARDS */
+    .card { background: white; border-radius: 10px; border: 1px solid var(--slate-200); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .card-body { padding: 1.5rem; }
+    .description { font-size: .875rem; color: var(--slate-600); line-height: 1.6; margin-bottom: 1.25rem; background: var(--slate-50); border-radius: 6px; padding: .75rem 1rem; border-left: 3px solid var(--purple); }
+    .subheading { font-size: .9rem; font-weight: 700; color: var(--slate-700); margin: 1.5rem 0 .5rem; }
+    .prose { font-size: .85rem; color: var(--slate-600); line-height: 1.65; }
+    .prose code, .description code, p code, td code { background: var(--slate-100); border-radius: 4px; padding: .05rem .35rem; font-family: 'Courier New', monospace; font-size: .82em; color: var(--purple-dark); }
+
+    /* MERMAID */
+    .mermaid-wrap { background: var(--slate-50); border-radius: 8px; padding: 1.5rem; border: 1px solid var(--slate-200); overflow-x: auto; text-align: center; }
+    pre.mermaid { display: block; }
+
+    /* PACKAGE TREE */
+    .pkg-tree { background: var(--slate-900); color: #e2e8f0; padding: 1.25rem 1.5rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.7; overflow-x: auto; }
+    .pkg-tree .dir { color: #93c5fd; }
+    .pkg-tree .file { color: #86efac; }
+    .pkg-tree .comment { color: #64748b; }
+    .pkg-tree .domain-file { color: #fde68a; }
+    .pkg-tree .enum-file { color: #f9a8d4; }
+    .pkg-tree .sql-file { color: #7dd3fc; }
+
+    /* API / DATA TABLE */
+    .api-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .api-table th { background: var(--slate-900); color: white; padding: .6rem 1rem; text-align: left; font-weight: 600; font-size: .8rem; }
+    .api-table td { padding: .6rem 1rem; border-bottom: 1px solid var(--slate-200); vertical-align: middle; }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-table tr:hover td { background: var(--slate-50); }
+    .api-section { background: var(--purple-light); }
+    .api-section td { font-weight: 700; font-size: .8rem; color: var(--purple-dark); padding: .4rem 1rem; letter-spacing: .04em; text-transform: uppercase; }
+    .method { display: inline-block; padding: .15rem .45rem; border-radius: 4px; font-size: .75rem; font-weight: 700; font-family: monospace; min-width: 52px; text-align: center; }
+    .m-get { background: #dbeafe; color: #1d4ed8; }
+    .m-post { background: #dcfce7; color: #166534; }
+    .m-put { background: #fef3c7; color: #92400e; }
+    .m-patch { background: #e0f2fe; color: #0369a1; }
+    .m-delete { background: #fee2e2; color: #991b1b; }
+    .endpoint { font-family: monospace; font-size: .8rem; color: var(--slate-700); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--slate-200); border-radius: 8px; }
+
+    /* RULES GRID */
+    .rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .rule-card { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 6px; padding: .75rem; font-size: .82rem; color: var(--slate-700); line-height: 1.5; }
+    .rule-card::before { content: "✓ "; color: #16a34a; font-weight: 700; }
+
+    /* FEATURE / STACK CHIPS */
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+    .chip { font-size: .75rem; font-weight: 600; padding: .3rem .7rem; border-radius: 999px; background: var(--purple-light); color: var(--purple-dark); border: 1px solid #ddd6fe; }
+
+    /* CODE BLOCK */
+    .code { background: var(--slate-900); color: #e2e8f0; padding: 1rem 1.25rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: .8rem; line-height: 1.6; overflow-x: auto; margin-top: .75rem; }
+    .code .k { color: #c4b5fd; } .code .s { color: #86efac; } .code .c { color: #64748b; }
+
+    /* CALLOUT */
+    .callout { display: flex; gap: .6rem; background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: .8rem 1rem; font-size: .82rem; color: #713f12; line-height: 1.55; margin-top: 1rem; }
+    .callout.info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+
+    /* PRINT */
+    @media print {
+      aside { display: none; }
+      header nav { display: none; }
+      .layout { display: block; }
+      main { padding: 1rem; max-width: 100%; }
+      .section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div>
+      <h1>GestarAfeto <span class="badge">v3.0.0</span></h1>
+      <p>Documentação Arquitetural — Terceira Entrega: Microsserviço de Alertas</p>
+    </div>
+  </div>
+  <nav>
+    <a href="/index.html">← Aplicação</a>
+    <a href="#" onclick="window.print()">🖨️ Imprimir / PDF</a>
+  </nav>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-inner">
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Visão do Sistema</div>
+        <a href="#contexto"><span class="icon">🌐</span> Contexto do Sistema</a>
+        <a href="#bounded-contexts"><span class="icon">🧩</span> Bounded Contexts</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Arquitetura</div>
+        <a href="#componentes"><span class="icon">⚙️</span> Componentes</a>
+        <a href="#camadas"><span class="icon">📚</span> Camadas</a>
+        <a href="#estrutura"><span class="icon">🗂️</span> Estrutura da Aplicação</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Persistência · TP2</div>
+        <a href="#persistencia"><span class="icon">🗃️</span> Estratégia de Persistência</a>
+        <a href="#migrations"><span class="icon">🪜</span> Migrations Flyway</a>
+        <a href="#integridade"><span class="icon">🛡️</span> Integridade & Performance</a>
+        <a href="#auditoria"><span class="icon">🕓</span> Auditoria & Histórico</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Modelo de Domínio</div>
+        <a href="#classes"><span class="icon">📐</span> Diagrama de Classes</a>
+        <a href="#er"><span class="icon">🗄️</span> Banco de Dados (ER)</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Comportamento</div>
+        <a href="#casos-de-uso"><span class="icon">👩</span> Casos de Uso</a>
+        <a href="#seq-gestante"><span class="icon">🔄</span> Seq: Cadastrar Gestante</a>
+        <a href="#seq-checklist"><span class="icon">🔄</span> Seq: Gerar Checklist</a>
+        <a href="#seq-status"><span class="icon">🔄</span> Seq: Atualizar Status</a>
+        <a href="#seq-auditoria"><span class="icon">🔄</span> Seq: Consultar Histórico</a>
+        <a href="#seq-lock"><span class="icon">🔄</span> Seq: Lock Otimista</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">Microsserviço · TP3</div>
+        <a href="#ms-visao"><span class="icon">🚀</span> Visão dos Serviços</a>
+        <a href="#ms-dominio"><span class="icon">🧩</span> Domínio de Alertas</a>
+        <a href="#ms-regras"><span class="icon">⚖️</span> Motor de Regras</a>
+        <a href="#ms-integracao"><span class="icon">🔗</span> Integração & Spring Cloud</a>
+        <a href="#ms-resiliencia"><span class="icon">🛟</span> Resiliência</a>
+        <a href="#ms-endpoints"><span class="icon">🔌</span> Endpoints de Alertas</a>
+      </div>
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">API, Testes & Evolução</div>
+        <a href="#endpoints"><span class="icon">🔌</span> Endpoints REST</a>
+        <a href="#testes"><span class="icon">🧪</span> Testes Automatizados</a>
+        <a href="#microsservicos"><span class="icon">🗺️</span> Evolução Futura</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main>
+
+    <!-- ===== 1. CONTEXTO ===== -->
+    <div class="section" id="contexto">
+      <div class="section-header">
+        <div class="num">1</div>
+        <h2>Contexto do Sistema</h2>
+        <span class="tag tag-novo">C4 Nível 1</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O <strong>GestarAfeto</strong> é uma aplicação web de apoio organizacional ao acompanhamento pré-natal.
+            Opera como um monólito Spring Boot com frontend React, acessado pela usuária via browser.
+            Na <strong>Segunda Entrega</strong> a persistência passou a ser <strong>real</strong>: PostgreSQL como banco de
+            produção/desenvolvimento, schema versionado por <strong>Flyway</strong> e histórico de dados via <strong>Hibernate Envers</strong>.
+            <strong>Não substitui avaliação médica</strong> — é uma ferramenta de organização e rastreabilidade de informações.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart TB
+    Usuario(["👩 Usuária\n(Gestante / Equipe de Saúde)"])
+
+    subgraph SYS["🏥  GestarAfeto — Sistema de Acompanhamento Pré-Natal"]
+        direction LR
+        FE["⚛️ React Frontend\n(SPA — Vite / porta 5173 ou 8080)"]
+        API["☕ Spring Boot REST API\n(porta 8080)"]
+        DB[("🐘 PostgreSQL\n(schema versionado por Flyway)")]
+        FE -->|"JSON / HTTP"| API
+        API -->|"Spring Data JPA + Envers"| DB
+    end
+
+    Usuario -->|"browser"| FE
+
+    SYS -.->|"não substitui"| Prof(["👨‍⚕️ Profissional de Saúde\n(avaliação clínica indispensável)"])
+
+    style SYS fill:#ede9fe,stroke:#7c3aed
+    style Prof fill:#fee2e2,stroke:#dc2626,color:#991b1b
+            </pre>
+          </div>
+          <div class="chips">
+            <span class="chip">Spring Boot 3</span>
+            <span class="chip">Spring Data JPA</span>
+            <span class="chip">Hibernate Envers</span>
+            <span class="chip">PostgreSQL</span>
+            <span class="chip">Flyway</span>
+            <span class="chip">H2 (test / dev-h2)</span>
+            <span class="chip">Bean Validation</span>
+            <span class="chip">Lock Otimista @Version</span>
+            <span class="chip">JUnit 5 + Testcontainers</span>
+            <span class="chip">React + TypeScript</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 2. BOUNDED CONTEXTS ===== -->
+    <div class="section" id="bounded-contexts">
+      <div class="section-header">
+        <div class="num">2</div>
+        <h2>Bounded Contexts — DDD</h2>
+        <span class="tag tag-novo">Domain-Driven Design</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O sistema vive dentro do bounded context <strong>acompanhamento-prenatal</strong>, subdividido em quatro subdomínios
+            de negócio, um subdomínio técnico transversal (<strong>Auditoria</strong>, introduzido na TP2) e um subdomínio futuro.
+            A organização interna por domínio (e não por tipo técnico) preserva o isolamento e prepara o projeto para extração de microsserviços.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart TB
+    subgraph BC["Bounded Context: acompanhamento-prenatal"]
+        direction TB
+
+        subgraph SD3["⭐ Checklist Pré-Natal (Subdomínio Principal)"]
+            C1["Gerar checklist da gestante"]
+            C2["Listar itens e pendências"]
+            C3["Atualizar status dos itens"]
+            C4["Registrar data de realização"]
+        end
+
+        subgraph SD1["Gestante (Subdomínio de Apoio)"]
+            G1["Cadastrar gestante"]
+            G2["Atualizar dados"]
+            G3["Consultar / paginar"]
+            G4["Registrar DPP / DUM"]
+        end
+
+        subgraph SD2["Procedimento (Subdomínio de Apoio)"]
+            P1["Catálogo de procedimentos"]
+            P2["Classificar: tipo e trimestre"]
+            P3["Definir obrigatoriedade"]
+            P4["Soft delete (inativar)"]
+        end
+
+        subgraph SD4["Consulta (Subdomínio de Apoio)"]
+            Q1["Registrar consulta"]
+            Q2["Histórico por gestante"]
+            Q3["Dados clínicos simples"]
+        end
+
+        subgraph SD6["🕓 Auditoria (Subdomínio Técnico Transversal)"]
+            AU1["Registrar revisões (Envers)"]
+            AU2["Consultar histórico de mudanças"]
+        end
+
+        subgraph SD5["Alertas (Subdomínio Futuro)"]
+            A1["⏳ Notificar pendências"]
+            A2["⏳ Avisar sobre prazos"]
+            A3["⏳ Painel de riscos"]
+        end
+
+        SD1 -->|"fornece gestante"| SD3
+        SD2 -->|"fornece procedimentos"| SD3
+        SD1 -->|"associa"| SD4
+        SD6 -.->|"audita mudanças de"| SD1 & SD2 & SD3 & SD4
+    end
+
+    style SD3 fill:#ede9fe,stroke:#7c3aed
+    style SD6 fill:#fce7f3,stroke:#db2777
+    style SD5 fill:#f1f5f9,stroke:#94a3b8
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 3. COMPONENTES ===== -->
+    <div class="section" id="componentes">
+      <div class="section-header">
+        <div class="num">3</div>
+        <h2>Diagrama de Componentes</h2>
+        <span class="tag tag-tp2">Arquitetura · TP2</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Visão detalhada dos componentes internos do monólito. Cada domínio tem seu próprio Controller, Service e Repository.
+            O <code>AuditoriaService</code> (novo na TP2) lê o histórico via <code>AuditReader</code> do <strong>Envers</strong>, que intercepta
+            transações e grava nas tabelas <code>*_aud</code>. O schema é criado e evoluído por <strong>Flyway</strong> (V1–V4) e o
+            Hibernate roda em <code>ddl-auto=validate</code> nos perfis PostgreSQL. O <code>GlobalExceptionHandler</code> padroniza os erros.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart LR
+    Usuario(["👩 Usuário"]) --> |HTTP| Frontend
+
+    subgraph FE["Front-end"]
+        Frontend["⚛️ React SPA\n(Vite + TypeScript)"]
+    end
+
+    Frontend --> |"REST /api (JSON)"| API
+
+    subgraph BE["☕ Back-end — Spring Boot Monólito"]
+        API["🔒 Security + CORS\n(SecurityConfig / CorsConfig)"]
+
+        API --> GC["GestanteController"]
+        API --> PC["ProcedimentoController"]
+        API --> CC["ChecklistController"]
+        API --> QC["ConsultaController"]
+        API --> AC["AuditoriaController"]
+
+        GC --> GS["GestanteService"]
+        PC --> PS["ProcedimentoService"]
+        CC --> CS["ChecklistService"]
+        QC --> QS["ConsultaService"]
+        AC --> AS["AuditoriaService"]
+
+        CS --> GS
+        CS --> PS
+
+        GS --> GR["GestanteRepository"]
+        PS --> PR["ProcedimentoRepository"]
+        CS --> CR["ItemChecklistGestanteRepository"]
+        QS --> QR["ConsultaPreNatalRepository"]
+        AS --> AR["AuditReader\n(Envers)"]
+
+        subgraph DATA["Spring Data JPA / Hibernate"]
+            GR & PR & CR & QR --> EM["EntityManager"]
+            AR --> EM
+            ENV["Hibernate Envers\n(@Audited)"] -.->|"grava *_aud + revinfo"| EM
+        end
+
+        EH["GlobalExceptionHandler\n(@RestControllerAdvice)"] -.->|"400 / 404 / 409 / 422 / 500"| GC & PC & CC & QC & AC
+        DI["DataInitializer\n(perfil dev-h2 · 23 procedimentos)"] -.->|"seed"| PR
+    end
+
+    EM --> DB[("🐘 PostgreSQL")]
+    FW["Flyway V1..V4\n(migrations)"] -->|"cria / evolui schema"| DB
+    TC["Testcontainers\n(perfil de teste)"] -. "sobe container real" .-> DB
+
+    style AC fill:#fce7f3,stroke:#db2777
+    style AS fill:#fce7f3,stroke:#db2777
+    style ENV fill:#fce7f3,stroke:#db2777
+    style FW fill:#dbeafe,stroke:#2563eb
+    style TC fill:#dcfce7,stroke:#16a34a
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 4. CAMADAS ===== -->
+    <div class="section" id="camadas">
+      <div class="section-header">
+        <div class="num">4</div>
+        <h2>Arquitetura em Camadas</h2>
+        <span class="tag">Layered Architecture</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Cada requisição percorre as camadas de cima para baixo. <strong>Controllers</strong> não contêm regras de negócio.
+            <strong>Services</strong> coordenam fluxos, abrem transações (<code>@Transactional</code>) e aplicam regras.
+            <strong>Repositories</strong> Spring Data isolam o acesso ao banco. <strong>DTOs</strong> (records) evitam expor entidades JPA.
+            A camada de <strong>Domínio</strong> é auditada pelo Envers, que escreve nas tabelas de histórico dentro da mesma transação.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart TD
+    REQ["📡 Requisição HTTP\n(Cliente / Browser)"]
+
+    subgraph DTO_IN["DTO de Entrada (records)"]
+        DI2["CriarGestanteRequest\nCriarProcedimentoRequest\nCriarConsultaRequest\nAtualizarStatusChecklistRequest"]
+    end
+
+    subgraph CTRL["🟣 Controller (Apresentação)"]
+        CTRL_DESC["Recebe HTTP · @Valid · Delega ao Service · Retorna ResponseEntity"]
+    end
+
+    subgraph SVC["🔵 Service (Aplicação)"]
+        SVC_DESC["@Transactional · Regras de negócio · Orquestra domínios · Lança exceções"]
+    end
+
+    subgraph REPO["🟢 Repository (Dados)"]
+        REPO_DESC["Spring Data JPA · Queries derivadas · @Query · @EntityGraph · Paginação"]
+    end
+
+    subgraph DOM["🟡 Domain (Domínio)"]
+        DOM_DESC["Entidades @Entity @Audited · @Version · Enums · @PrePersist / @PreUpdate"]
+    end
+
+    DB2[("🐘 PostgreSQL")]
+    AUD[("🕓 Tabelas de histórico\n*_aud + revinfo (Envers)")]
+
+    subgraph DTO_OUT["DTO de Saída (records)"]
+        DO2["GestanteResponse\nProcedimentoResponse\nItemChecklistResponse\nConsultaResponse"]
+    end
+
+    REQ --> DTO_IN --> CTRL --> SVC --> REPO --> DOM --> DB2
+    DOM -.->|"@Audited grava na mesma transação"| AUD
+    DB2 --> DOM --> REPO --> SVC --> DTO_OUT --> CTRL
+
+    style CTRL fill:#ede9fe,stroke:#7c3aed
+    style SVC fill:#dbeafe,stroke:#2563eb
+    style REPO fill:#dcfce7,stroke:#16a34a
+    style DOM fill:#fef3c7,stroke:#d97706
+    style DB2 fill:#f1f5f9,stroke:#64748b
+    style AUD fill:#fce7f3,stroke:#db2777
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 5. ESTRUTURA DA APLICAÇÃO ===== -->
+    <div class="section" id="estrutura">
+      <div class="section-header">
+        <div class="num">5</div>
+        <h2>Estrutura da Aplicação</h2>
+        <span class="tag tag-novo">Pacotes</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Organização por domínio de negócio, não por tipo técnico. Cada domínio é auto-suficiente com suas próprias
+            camadas controller → service → repository → domain → dto. A TP2 acrescenta o domínio <code>auditoria/</code>,
+            as migrations em <code>resources/db/migration/</code> e novas classes de configuração no pacote <code>shared</code>.
+          </p>
+          <div class="pkg-tree">
+<span class="dir">src/main/java/estevezalvarez/GestarAfeto/</span>
+├── <span class="file">GestarAfetoApplication.java</span>       <span class="comment">// @SpringBootApplication · entry point</span>
+│
+├── <span class="dir">gestante/</span>                              <span class="comment">// Subdomínio: Cadastro de Gestantes</span>
+│   ├── controller/ <span class="file">GestanteController.java</span>   <span class="comment">// CRUD + /paginado</span>
+│   ├── service/    <span class="file">GestanteService.java</span>      <span class="comment">// Regra: DPP ou DUM obrigatória</span>
+│   ├── repository/ <span class="file">GestanteRepository.java</span>   <span class="comment">// findByNomeContainingIgnoreCase(Pageable)</span>
+│   ├── domain/     <span class="domain-file">Gestante.java</span>             <span class="comment">// @Entity @Audited @Version</span>
+│   └── dto/        <span class="file">CriarGestanteRequest · GestanteResponse</span>
+│
+├── <span class="dir">procedimento/</span>                          <span class="comment">// Subdomínio: Catálogo de Procedimentos</span>
+│   ├── controller/ <span class="file">ProcedimentoController.java</span> <span class="comment">// CRUD + /paginado (tipo, trimestre, nome)</span>
+│   ├── service/    <span class="file">ProcedimentoService.java</span>  <span class="comment">// Soft delete (ativo=false)</span>
+│   ├── repository/ <span class="file">ProcedimentoRepository.java</span> <span class="comment">// findByAtivoTrue · @Query semana</span>
+│   ├── domain/     <span class="domain-file">ProcedimentoPreNatal.java</span> <span class="enum-file">TipoProcedimento</span> <span class="enum-file">TrimestreGestacional</span>
+│   └── dto/        <span class="file">CriarProcedimentoRequest · ProcedimentoResponse</span>
+│
+├── <span class="dir">checklist/</span>                             <span class="comment">// ⭐ Subdomínio Principal</span>
+│   ├── controller/ <span class="file">ChecklistController.java</span>  <span class="comment">// gerar · listar · status · realizar · revisar</span>
+│   ├── service/    <span class="file">ChecklistService.java</span>
+│   ├── repository/ <span class="file">ItemChecklistGestanteRepository.java</span> <span class="comment">// @EntityGraph</span>
+│   ├── domain/     <span class="domain-file">ItemChecklistGestante.java</span> <span class="enum-file">StatusChecklist</span>
+│   └── dto/        <span class="file">AtualizarStatusChecklistRequest · ItemChecklistResponse · ProcedimentoResumoResponse</span>
+│
+├── <span class="dir">consulta/</span>                              <span class="comment">// Subdomínio: Registro de Consultas</span>
+│   ├── controller/ <span class="file">ConsultaController.java</span>   <span class="comment">// CRUD + /paginado</span>
+│   ├── service/    <span class="file">ConsultaService.java</span>
+│   ├── repository/ <span class="file">ConsultaPreNatalRepository.java</span> <span class="comment">// @EntityGraph gestante</span>
+│   ├── domain/     <span class="domain-file">ConsultaPreNatal.java</span>       <span class="comment">// @ManyToOne(LAZY) Gestante</span>
+│   └── dto/        <span class="file">CriarConsultaRequest · ConsultaResponse</span>
+│
+├── <span class="dir">auditoria/</span>                             <span class="comment">// 🕓 NOVO na TP2 — Histórico de Dados</span>
+│   ├── controller/ <span class="file">AuditoriaController.java</span>  <span class="comment">// GET /api/auditoria/{entidade}/{id}</span>
+│   ├── service/    <span class="file">AuditoriaService.java</span>     <span class="comment">// AuditReaderFactory · forRevisionsOfEntity</span>
+│   ├── domain/     <span class="domain-file">AuditoriaRevision.java</span>      <span class="comment">// @RevisionEntity → tabela revinfo</span>
+│   └── dto/        <span class="file">AuditoriaRevisionResponse.java</span>
+│
+└── <span class="dir">shared/</span>                                <span class="comment">// Código transversal</span>
+    ├── config/ <span class="file">SecurityConfig · CorsConfig</span>
+    │          <span class="file">JpaAuditingConfig</span>          <span class="comment">// @EnableJpaAuditing (CreatedDate/LastModifiedDate)</span>
+    │          <span class="file">FlywayMigrationConfig</span>      <span class="comment">// orquestra migrations</span>
+    │          <span class="file">DataInitializer</span>            <span class="comment">// seed dev-h2 · 23 procedimentos</span>
+    └── exception/ <span class="file">GlobalExceptionHandler · ErroResponse</span>
+                <span class="file">RecursoNaoEncontradoException</span> <span class="comment">// → 404</span>
+                <span class="file">RegraDeNegocioException</span>    <span class="comment">// → 422</span>
+
+<span class="dir">src/main/resources/db/migration/</span>          <span class="comment">// 🪜 Flyway — schema versionado</span>
+├── <span class="sql-file">V1__create_core_tables.sql</span>         <span class="comment">// 4 tabelas de domínio</span>
+├── <span class="sql-file">V2__create_constraints_and_indexes.sql</span> <span class="comment">// FKs, uniques, checks, índices</span>
+├── <span class="sql-file">V3__insert_default_procedures.sql</span>  <span class="comment">// seed dos 23 procedimentos</span>
+└── <span class="sql-file">V4__create_audit_tables.sql</span>        <span class="comment">// revinfo + tabelas *_aud (Envers)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 6. ESTRATÉGIA DE PERSISTÊNCIA ===== -->
+    <div class="section" id="persistencia">
+      <div class="section-header">
+        <div class="num">6</div>
+        <h2>Estratégia de Persistência</h2>
+        <span class="tag tag-tp2">Segunda Entrega</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            A camada de persistência é <strong>real e versionada</strong>. O <strong>Flyway</strong> é a fonte de verdade do schema
+            nos perfis PostgreSQL; o Hibernate roda em <code>ddl-auto=validate</code> — ou seja, valida o mapeamento contra o schema
+            existente, mas <strong>nunca</strong> altera tabelas em produção. Cada entidade mutável carrega <code>@Version</code> para
+            <strong>controle de concorrência otimista</strong>. Perfis dedicados isolam ambientes de desenvolvimento, teste e produção.
+          </p>
+
+          <div class="subheading">Perfis de execução</div>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Perfil</th><th>Banco</th><th>Flyway</th><th>ddl-auto</th><th>Uso</th></tr></thead>
+              <tbody>
+                <tr><td><code>dev</code></td><td>🐘 PostgreSQL (Docker Compose)</td><td>✅ habilitado</td><td><code>validate</code></td><td>Desenvolvimento local com banco real</td></tr>
+                <tr><td><code>prod</code></td><td>🐘 PostgreSQL (variáveis de ambiente)</td><td>✅ habilitado</td><td><code>validate</code></td><td>Produção</td></tr>
+                <tr><td><code>dev-h2</code></td><td>💧 H2 em memória (modo PostgreSQL)</td><td>❌ desabilitado</td><td><code>create-drop</code></td><td>Desenvolvimento rápido sem Docker (seed via DataInitializer)</td></tr>
+                <tr><td><code>test</code></td><td>💧 H2 em memória (modo PostgreSQL)</td><td>❌ desabilitado</td><td><code>create-drop</code></td><td>Testes de repositório rápidos (@DataJpaTest)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="subheading">Decisões de projeto</div>
+          <ul class="prose" style="padding-left:1.1rem">
+            <li><strong>Flyway como fonte do schema</strong> — DDL explícito e revisável, migrations imutáveis versionadas no Git.</li>
+            <li><strong><code>ddl-auto=validate</code></strong> — o Hibernate não improvisa o schema; divergências falham no startup.</li>
+            <li><strong>H2 em modo PostgreSQL</strong> nos testes — sintaxe compatível, feedback rápido, sem depender de Docker.</li>
+            <li><strong>Testcontainers</strong> — evidência de compatibilidade com PostgreSQL real quando há Docker disponível.</li>
+            <li><strong>DTOs (records)</strong> — a API nunca serializa entidades JPA diretamente, evitando lazy-loading acidental.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 7. MIGRATIONS FLYWAY ===== -->
+    <div class="section" id="migrations">
+      <div class="section-header">
+        <div class="num">7</div>
+        <h2>Migrations Flyway</h2>
+        <span class="tag tag-tp2">Schema Versionado</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Quatro migrations descrevem toda a evolução do schema, aplicadas em ordem e registradas na tabela
+            <code>flyway_schema_history</code>. Migrations já aplicadas são imutáveis: qualquer mudança futura entra como <code>V5</code>, <code>V6</code>…
+          </p>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Versão</th><th>Arquivo</th><th>Conteúdo</th></tr></thead>
+              <tbody>
+                <tr><td><strong>V1</strong></td><td class="endpoint">create_core_tables.sql</td><td>Cria <code>gestantes</code>, <code>procedimentos_prenatal</code>, <code>itens_checklist_gestante</code> e <code>consultas_prenatal</code>, cada uma com <code>version</code> (lock otimista).</td></tr>
+                <tr><td><strong>V2</strong></td><td class="endpoint">create_constraints_and_indexes.sql</td><td>Chaves estrangeiras, <code>UNIQUE(gestante_id, procedimento_id)</code>, checks de domínio e índices de consulta.</td></tr>
+                <tr><td><strong>V3</strong></td><td class="endpoint">insert_default_procedures.sql</td><td>Seed idempotente dos <strong>23 procedimentos</strong> base do protocolo de pré-natal.</td></tr>
+                <tr><td><strong>V4</strong></td><td class="endpoint">create_audit_tables.sql</td><td>Tabela <code>revinfo</code> + tabelas <code>*_aud</code> do Envers, com FK para <code>revinfo(rev)</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout info">
+            <span>ℹ️</span>
+            <div>Nos perfis <code>dev-h2</code> e <code>test</code> o Flyway fica desabilitado e o Hibernate cria o schema com
+            <code>create-drop</code> — isso mantém os testes de repositório rápidos. A validação das migrations contra o PostgreSQL
+            real é coberta pelo <code>MigrationIntegrationTest</code> com Testcontainers.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 8. INTEGRIDADE & PERFORMANCE ===== -->
+    <div class="section" id="integridade">
+      <div class="section-header">
+        <div class="num">8</div>
+        <h2>Integridade & Performance</h2>
+        <span class="tag tag-tp2">Gerenciamento de Dados</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            A integridade é garantida no banco (constraints) e na aplicação (Bean Validation + regras de negócio).
+            A performance é tratada com carregamento <code>LAZY</code>, <code>@EntityGraph</code> para evitar N+1 e paginação nas listagens que crescem.
+          </p>
+
+          <div class="subheading">🛡️ Integridade</div>
+          <div class="rules-grid">
+            <div class="rule-card"><code>@Version</code> em todas as entidades mutáveis (lock otimista → HTTP 409)</div>
+            <div class="rule-card"><code>UNIQUE(gestante_id, procedimento_id)</code> impede item de checklist duplicado</div>
+            <div class="rule-card">Check: <code>semana_gestacional</code> entre 1 e 42</div>
+            <div class="rule-card">Check: <code>peso &gt; 0</code></div>
+            <div class="rule-card">Check: semana inicial ≤ semana final do procedimento</div>
+            <div class="rule-card">Check: status <code>REALIZADO</code> exige <code>data_realizacao</code></div>
+            <div class="rule-card">FKs <code>gestante_id</code> / <code>procedimento_id</code> com integridade referencial</div>
+            <div class="rule-card">Bean Validation (<code>@NotBlank</code>, <code>@NotNull</code>) na borda da API</div>
+          </div>
+
+          <div class="subheading">⚡ Performance</div>
+          <div class="rules-grid">
+            <div class="rule-card"><code>@ManyToOne(fetch = LAZY)</code> em todos os relacionamentos</div>
+            <div class="rule-card"><code>@EntityGraph</code> carrega <code>gestante</code>/<code>procedimento</code> sob demanda (evita N+1)</div>
+            <div class="rule-card">Listagens paginadas: <code>Page&lt;T&gt;</code> + <code>Pageable</code></div>
+            <div class="rule-card">Índice <code>idx_consultas_gestante_data_desc</code> para histórico ordenado</div>
+            <div class="rule-card">Índices <code>idx_checklist_gestante_status</code> e <code>idx_procedimentos_ativo_tipo</code></div>
+            <div class="rule-card">DTOs enxutos evitam serializar grafos inteiros</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 9. AUDITORIA & HISTÓRICO ===== -->
+    <div class="section" id="auditoria">
+      <div class="section-header">
+        <div class="num">9</div>
+        <h2>Auditoria & Histórico de Dados</h2>
+        <span class="tag tag-tp2">Hibernate Envers</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O histórico de mudanças é implementado com <strong>Hibernate Envers</strong>. Cada entidade anotada com <code>@Audited</code>
+            gera uma tabela espelho <code>*_aud</code>. A cada transação que insere, altera ou remove um registro, o Envers grava uma
+            <strong>revisão</strong> (linha em <code>*_aud</code> + referência a <code>revinfo</code>) com o tipo da operação (<code>ADD</code>,
+            <code>MOD</code>, <code>DEL</code>), permitindo reconstruir o estado do dado em qualquer ponto do tempo — essencial para auditoria e rastreabilidade.
+          </p>
+
+          <div class="subheading">Como funciona</div>
+          <ul class="prose" style="padding-left:1.1rem">
+            <li>Entidades auditadas: <code>Gestante</code>, <code>ProcedimentoPreNatal</code>, <code>ItemChecklistGestante</code>, <code>ConsultaPreNatal</code>.</li>
+            <li><code>AuditoriaRevision</code> (<code>@RevisionEntity</code>) mapeia a tabela <code>revinfo</code> — número da revisão + timestamp.</li>
+            <li><code>store_data_at_delete=true</code>: mesmo em exclusões, o último estado é preservado no histórico.</li>
+            <li><code>AuditoriaService</code> usa <code>AuditReaderFactory.get(em).createQuery().forRevisionsOfEntity(...)</code> para ler as revisões.</li>
+            <li>Endpoint: <code>GET /api/auditoria/{entidade}/{id}</code> → aceita <code>gestante</code>, <code>procedimento</code>, <code>checklist</code>, <code>consulta</code>.</li>
+          </ul>
+
+          <div class="code"><span class="c">// application.properties — configuração do Envers</span>
+spring.jpa.properties.org.hibernate.envers.<span class="k">audit_table_suffix</span>=<span class="s">_aud</span>
+spring.jpa.properties.org.hibernate.envers.<span class="k">store_data_at_delete</span>=<span class="s">true</span></div>
+
+          <div class="subheading">Resposta do endpoint de histórico</div>
+          <div class="code"><span class="c">// GET /api/auditoria/gestante/1</span>
+[
+  { <span class="k">"revisao"</span>: 1, <span class="k">"dataHora"</span>: <span class="s">"2026-07-17T12:00:00Z"</span>, <span class="k">"tipoAlteracao"</span>: <span class="s">"ADD"</span>,
+    <span class="k">"dados"</span>: { <span class="k">"nome"</span>: <span class="s">"Luciana"</span>, <span class="k">"email"</span>: <span class="s">"luciana@example.com"</span> } },
+  { <span class="k">"revisao"</span>: 2, <span class="k">"dataHora"</span>: <span class="s">"2026-07-17T12:05:00Z"</span>, <span class="k">"tipoAlteracao"</span>: <span class="s">"MOD"</span>,
+    <span class="k">"dados"</span>: { <span class="k">"nome"</span>: <span class="s">"Luciana Pereira"</span>, <span class="k">"email"</span>: <span class="s">"luciana@example.com"</span> } }
+]</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 10. DIAGRAMA DE CLASSES ===== -->
+    <div class="section" id="classes">
+      <div class="section-header">
+        <div class="num">10</div>
+        <h2>Diagrama de Classes</h2>
+        <span class="tag">UML</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Entidades JPA, enumerações e suas relações. Todas as entidades de negócio são <code>@Audited</code> e possuem <code>@Version</code>.
+            <code>ItemChecklistGestante</code> é a entidade associativa central — vincula uma Gestante a um ProcedimentoPreNatal e
+            rastreia o status ao longo do tempo. <code>AuditoriaRevision</code> representa a revisão registrada pelo Envers.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+classDiagram
+    class Gestante {
+        +Long id
+        +Long version
+        +String nome
+        +LocalDate dataNascimento
+        +String telefone
+        +String email
+        +LocalDate dataUltimaMenstruacao
+        +LocalDate dataProvavelParto
+        +String observacoes
+        +LocalDateTime dataCadastro
+        +LocalDateTime dataAtualizacao
+    }
+
+    class ProcedimentoPreNatal {
+        +Long id
+        +Long version
+        +String nome
+        +String descricao
+        +TipoProcedimento tipo
+        +TrimestreGestacional trimestreRecomendado
+        +Integer semanaInicialRecomendada
+        +Integer semanaFinalRecomendada
+        +boolean obrigatorio
+        +boolean ativo
+    }
+
+    class ItemChecklistGestante {
+        +Long id
+        +Long version
+        +StatusChecklist status
+        +LocalDate dataPrevista
+        +LocalDate dataRealizacao
+        +String observacao
+        +LocalDateTime dataCriacao
+        +LocalDateTime dataAtualizacao
+    }
+
+    class ConsultaPreNatal {
+        +Long id
+        +Long version
+        +LocalDate dataConsulta
+        +Integer semanaGestacional
+        +BigDecimal peso
+        +String pressaoArterial
+        +String observacoes
+        +LocalDateTime dataRegistro
+    }
+
+    class AuditoriaRevision {
+        +Integer id
+        +Long timestamp
+    }
+
+    class TipoProcedimento {
+        &lt;&lt;enumeration&gt;&gt;
+        CONSULTA
+        EXAME
+        VACINA
+        ORIENTACAO
+        ULTRASSONOGRAFIA
+    }
+
+    class StatusChecklist {
+        &lt;&lt;enumeration&gt;&gt;
+        PENDENTE
+        REALIZADO
+        NAO_SE_APLICA
+        PRECISA_REVISAR
+    }
+
+    class TrimestreGestacional {
+        &lt;&lt;enumeration&gt;&gt;
+        PRIMEIRO
+        SEGUNDO
+        TERCEIRO
+    }
+
+    Gestante "1" --> "N" ItemChecklistGestante : possui
+    Gestante "1" --> "N" ConsultaPreNatal : realiza
+    ProcedimentoPreNatal "1" --> "N" ItemChecklistGestante : compoe
+    ProcedimentoPreNatal --> TipoProcedimento : usa
+    ProcedimentoPreNatal --> TrimestreGestacional : usa
+    ItemChecklistGestante --> StatusChecklist : usa
+    AuditoriaRevision ..> Gestante : audita
+    AuditoriaRevision ..> ProcedimentoPreNatal : audita
+    AuditoriaRevision ..> ItemChecklistGestante : audita
+    AuditoriaRevision ..> ConsultaPreNatal : audita
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 11. BANCO DE DADOS ===== -->
+    <div class="section" id="er">
+      <div class="section-header">
+        <div class="num">11</div>
+        <h2>Modelo do Banco de Dados — ER</h2>
+        <span class="tag tag-novo">Entidade-Relacionamento</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Quatro tabelas de domínio + a estrutura de auditoria do Envers. <code>itens_checklist_gestante</code> é a tabela
+            associativa principal. Cada tabela de domínio possui uma coluna <code>version</code> e uma tabela espelho <code>*_aud</code>,
+            todas referenciando <code>revinfo</code> (o registro da revisão).
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+erDiagram
+    GESTANTES ||--o{ ITENS_CHECKLIST_GESTANTE : "gestante_id"
+    GESTANTES ||--o{ CONSULTAS_PRENATAL : "gestante_id"
+    PROCEDIMENTOS_PRENATAL ||--o{ ITENS_CHECKLIST_GESTANTE : "procedimento_id"
+
+    REVINFO ||--o{ GESTANTES_AUD : revisa
+    REVINFO ||--o{ PROCEDIMENTOS_PRENATAL_AUD : revisa
+    REVINFO ||--o{ ITENS_CHECKLIST_GESTANTE_AUD : revisa
+    REVINFO ||--o{ CONSULTAS_PRENATAL_AUD : revisa
+
+    GESTANTES {
+        bigint id PK
+        bigint version
+        varchar nome "NOT NULL"
+        date data_nascimento
+        varchar telefone
+        varchar email
+        date data_ultima_menstruacao
+        date data_provavel_parto
+        text observacoes
+        timestamp data_cadastro "NOT NULL"
+        timestamp data_atualizacao
+    }
+
+    PROCEDIMENTOS_PRENATAL {
+        bigint id PK
+        bigint version
+        varchar nome "NOT NULL"
+        text descricao
+        varchar tipo "NOT NULL · enum"
+        varchar trimestre_recomendado "enum"
+        integer semana_inicial_recomendada
+        integer semana_final_recomendada
+        boolean obrigatorio "default true"
+        boolean ativo "default true"
+    }
+
+    ITENS_CHECKLIST_GESTANTE {
+        bigint id PK
+        bigint version
+        bigint gestante_id FK
+        bigint procedimento_id FK
+        varchar status "NOT NULL · enum"
+        date data_prevista
+        date data_realizacao
+        text observacao
+        timestamp data_criacao "NOT NULL"
+        timestamp data_atualizacao
+    }
+
+    CONSULTAS_PRENATAL {
+        bigint id PK
+        bigint version
+        bigint gestante_id FK
+        date data_consulta "NOT NULL"
+        integer semana_gestacional
+        numeric peso "5,2"
+        varchar pressao_arterial
+        text observacoes
+        timestamp data_registro "NOT NULL"
+    }
+
+    REVINFO {
+        integer rev PK
+        bigint revtstmp "timestamp epoch"
+    }
+
+    GESTANTES_AUD {
+        bigint id PK
+        integer rev PK,FK
+        smallint revtype "ADD/MOD/DEL"
+        varchar nome
+        varchar email
+    }
+            </pre>
+          </div>
+          <p class="prose" style="margin-top:1rem">
+            <strong>Constraints principais:</strong> <code>UNIQUE(gestante_id, procedimento_id)</code> no checklist; checks de
+            semana gestacional (1–42), peso positivo, intervalo de semanas do procedimento e data obrigatória quando o status é
+            <code>REALIZADO</code>. As tabelas <code>PROCEDIMENTOS_PRENATAL_AUD</code>, <code>ITENS_CHECKLIST_GESTANTE_AUD</code> e
+            <code>CONSULTAS_PRENATAL_AUD</code> seguem o mesmo padrão de <code>GESTANTES_AUD</code> (omitidas no diagrama por concisão).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 12. CASOS DE USO ===== -->
+    <div class="section" id="casos-de-uso">
+      <div class="section-header">
+        <div class="num">12</div>
+        <h2>Diagrama de Casos de Uso</h2>
+        <span class="tag tag-novo">UML Use Case</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            A <strong>Usuária do Sistema</strong> é o único ator — representa tanto a gestante quanto a equipe de saúde
+            que interage com a aplicação. Os casos de uso estão agrupados por domínio de negócio; a TP2 acrescenta
+            <strong>Consultar Histórico</strong> (auditoria).
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart LR
+    Actor(["👩 Usuária\ndo Sistema"])
+
+    subgraph G["📋 Gestante"]
+        UC1(["Cadastrar Gestante"])
+        UC2(["Listar / Paginar Gestantes"])
+        UC3(["Editar Gestante"])
+        UC4(["Remover Gestante"])
+    end
+
+    subgraph P["🔬 Procedimento"]
+        UC5(["Cadastrar Procedimento"])
+        UC6(["Listar / Filtrar Procedimentos"])
+        UC7(["Inativar Procedimento"])
+    end
+
+    subgraph C["✅ Checklist"]
+        UC8(["Gerar Checklist"])
+        UC9(["Visualizar Checklist"])
+        UC10(["Marcar como Realizado"])
+        UC11(["Marcar para Revisar"])
+        UC12(["Atualizar Status Detalhado"])
+    end
+
+    subgraph Q["🏥 Consulta"]
+        UC13(["Registrar Consulta"])
+        UC14(["Listar Consultas"])
+        UC15(["Editar Consulta"])
+        UC16(["Remover Consulta"])
+    end
+
+    subgraph AU["🕓 Auditoria"]
+        UC17(["Consultar Histórico\nde Mudanças"])
+    end
+
+    Actor --> UC1 & UC2 & UC3 & UC4
+    Actor --> UC5 & UC6 & UC7
+    Actor --> UC8 & UC9 & UC10 & UC11 & UC12
+    Actor --> UC13 & UC14 & UC15 & UC16
+    Actor --> UC17
+
+    UC8 -.->|"&lt;&lt;extend&gt;&gt;\nprecisa de procedimentos"| UC6
+    UC10 & UC11 & UC12 -.->|"&lt;&lt;include&gt;&gt;"| UC9
+    UC17 -.->|"&lt;&lt;include&gt;&gt;\nEnvers"| UC1
+
+    style G fill:#ede9fe,stroke:#7c3aed
+    style P fill:#dbeafe,stroke:#2563eb
+    style C fill:#dcfce7,stroke:#16a34a
+    style Q fill:#fef3c7,stroke:#d97706
+    style AU fill:#fce7f3,stroke:#db2777
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 13. SEQ GESTANTE ===== -->
+    <div class="section" id="seq-gestante">
+      <div class="section-header">
+        <div class="num">13</div>
+        <h2>Sequência — Cadastrar Gestante</h2>
+        <span class="tag tag-seq">Diagrama de Sequência</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Fluxo completo de cadastro com Bean Validation e regra de negócio (DPP ou DUM obrigatória). Ao persistir, o
+            <strong>Envers</strong> grava a primeira revisão (<code>ADD</code>) na tabela <code>gestantes_aud</code> dentro da mesma transação.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    actor Usuario as 👩 Usuária
+    participant React as React Frontend
+    participant Controller as GestanteController
+    participant Service as GestanteService
+    participant Repo as GestanteRepository
+    participant DB as 🐘 PostgreSQL
+    participant Envers as 🕓 Envers
+
+    Usuario->>React: Preenche formulário e clica "Salvar"
+    React->>Controller: POST /api/gestantes (JSON)
+    Controller->>Controller: @Valid — Bean Validation
+
+    alt Campos obrigatórios inválidos
+        Controller-->>React: 400 Bad Request + ErroResponse
+        React-->>Usuario: Exibe mensagem de validação
+    else Dados válidos
+        Controller->>Service: cadastrar(CriarGestanteRequest)
+        Service->>Service: Verifica dataProvavelParto ou dataUltimaMenstruacao
+
+        alt Nenhuma data informada
+            Service-->>Controller: RegraDeNegocioException
+            Controller-->>React: 422 Unprocessable Entity
+            React-->>Usuario: "Informe DPP ou DUM"
+        else Pelo menos uma data informada
+            Note over Service,Envers: @Transactional
+            Service->>Repo: save(Gestante) [version=0]
+            Repo->>DB: INSERT INTO gestantes (...)
+            DB-->>Repo: Gestante com id gerado
+            Repo->>Envers: intercepta commit
+            Envers->>DB: INSERT revinfo + gestantes_aud (revtype=ADD)
+            Repo-->>Service: Gestante
+            Service-->>Controller: GestanteResponse
+            Controller-->>React: 201 Created + JSON
+            React-->>Usuario: Gestante cadastrada ✓
+        end
+    end
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 14. SEQ CHECKLIST ===== -->
+    <div class="section" id="seq-checklist">
+      <div class="section-header">
+        <div class="num">14</div>
+        <h2>Sequência — Gerar Checklist</h2>
+        <span class="tag tag-seq">Diagrama de Sequência</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O checklist é gerado uma única vez por gestante (regra de negócio + constraint <code>UNIQUE</code>).
+            O sistema busca todos os procedimentos ativos e cria um <code>ItemChecklistGestante</code> com status
+            <code>PENDENTE</code> para cada um, em uma única transação.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    actor Usuario as 👩 Usuária
+    participant React as React Frontend
+    participant Controller as ChecklistController
+    participant Service as ChecklistService
+    participant GService as GestanteService
+    participant PService as ProcedimentoService
+    participant CRepo as ItemChecklistRepository
+    participant DB as 🐘 PostgreSQL
+
+    Usuario->>React: Seleciona gestante e clica "Gerar Checklist"
+    React->>Controller: POST /api/gestantes/{id}/checklist/gerar
+
+    Controller->>Service: gerarChecklist(gestanteId)
+    Service->>CRepo: existsByGestanteId(gestanteId)
+    CRepo->>DB: SELECT COUNT(*) WHERE gestante_id = ?
+    DB-->>CRepo: resultado
+
+    alt Checklist já existe
+        CRepo-->>Service: true
+        Service-->>Controller: RegraDeNegocioException
+        Controller-->>React: 422 — Checklist já gerado
+        React-->>Usuario: Mensagem de aviso
+    else Primeiro acesso
+        CRepo-->>Service: false
+        Service->>GService: buscarEntidade(gestanteId)
+        GService-->>Service: Gestante
+
+        Service->>PService: listarAtivos()
+        PService->>DB: SELECT * FROM procedimentos_prenatal WHERE ativo=true
+        DB-->>PService: 23 procedimentos
+        PService-->>Service: List(ProcedimentoPreNatal)
+
+        Service->>CRepo: saveAll(itens PENDENTE)
+        CRepo->>DB: INSERT INTO itens_checklist_gestante (x N)
+        DB-->>CRepo: itens salvos
+        CRepo-->>Service: List(ItemChecklistGestante)
+
+        Service-->>Controller: List(ItemChecklistResponse)
+        Controller-->>React: 201 Created + JSON
+        React-->>Usuario: Exibe checklist com itens PENDENTES
+    end
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 15. SEQ STATUS ===== -->
+    <div class="section" id="seq-status">
+      <div class="section-header">
+        <div class="num">15</div>
+        <h2>Sequência — Atualizar Status do Item</h2>
+        <span class="tag tag-seq">Diagrama de Sequência</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Ação rápida de marcar um item como <code>REALIZADO</code>. A data de realização é definida automaticamente
+            como <code>LocalDate.now()</code>. O <code>UPDATE</code> incrementa a coluna <code>version</code> e o Envers registra a revisão <code>MOD</code>.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    actor Usuario as 👩 Usuária
+    participant React as React Frontend
+    participant Controller as ChecklistController
+    participant Service as ChecklistService
+    participant Repo as ItemChecklistRepository
+    participant DB as 🐘 PostgreSQL
+    participant Envers as 🕓 Envers
+
+    Usuario->>React: Clica "✓ Realizado" em um item do checklist
+    React->>Controller: PATCH /api/checklist/{itemId}/realizar
+
+    Controller->>Service: marcarRealizado(itemId)
+    Service->>Repo: findById(itemId)
+    Repo->>DB: SELECT * FROM itens_checklist_gestante WHERE id = ?
+    DB-->>Repo: ItemChecklistGestante
+
+    alt Item não encontrado
+        Repo-->>Service: Optional.empty()
+        Service-->>Controller: RecursoNaoEncontradoException
+        Controller-->>React: 404 Not Found
+    else Item encontrado
+        Repo-->>Service: item
+        Service->>Service: item.setStatus(REALIZADO)
+        Service->>Service: item.setDataRealizacao(LocalDate.now())
+        Service->>Repo: save(item)
+        Repo->>DB: UPDATE SET status='REALIZADO', data_realizacao=?, version=version+1
+        Repo->>Envers: intercepta commit
+        Envers->>DB: INSERT revinfo + itens_checklist_gestante_aud (revtype=MOD)
+        DB-->>Repo: item atualizado
+        Repo-->>Service: ItemChecklistGestante
+        Service-->>Controller: ItemChecklistResponse
+        Controller-->>React: 200 OK + JSON
+        React-->>Usuario: Badge REALIZADO exibido em verde ✓
+    end
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 16. SEQ AUDITORIA ===== -->
+    <div class="section" id="seq-auditoria">
+      <div class="section-header">
+        <div class="num">16</div>
+        <h2>Sequência — Consultar Histórico (Auditoria)</h2>
+        <span class="tag tag-tp2">Envers · Histórico</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Fluxo de leitura do histórico de uma entidade. O <code>AuditoriaService</code> resolve a classe pela string da entidade,
+            consulta as revisões via <code>AuditReader</code> do Envers e mapeia cada revisão para um <code>AuditoriaRevisionResponse</code>
+            (número da revisão, timestamp, tipo da alteração e snapshot dos dados).
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    actor Usuario as 👩 Usuária
+    participant React as React Frontend
+    participant Controller as AuditoriaController
+    participant Service as AuditoriaService
+    participant Reader as AuditReader (Envers)
+    participant DB as 🐘 PostgreSQL
+
+    Usuario->>React: Abre "Histórico" de uma gestante
+    React->>Controller: GET /api/auditoria/gestante/{id}
+    Controller->>Service: historico("gestante", id)
+    Service->>Service: resolverEntidade("gestante") → Gestante.class
+
+    alt Entidade não auditada
+        Service-->>Controller: RegraDeNegocioException
+        Controller-->>React: 422 — "Entidade nao auditada"
+    else Entidade válida
+        Service->>Reader: forRevisionsOfEntity(Gestante, false, true).add(id.eq(?))
+        Reader->>DB: SELECT g.*, r.* FROM gestantes_aud g JOIN revinfo r ...
+        DB-->>Reader: linhas [entidade, revisão, revtype]
+        Reader-->>Service: List(Object[])
+        Service->>Service: mapearResultado → snapshot() por revisão
+        Service-->>Controller: List(AuditoriaRevisionResponse)
+        Controller-->>React: 200 OK + JSON (revisões)
+        React-->>Usuario: Linha do tempo de mudanças (ADD / MOD / DEL)
+    end
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 17. SEQ LOCK OTIMISTA ===== -->
+    <div class="section" id="seq-lock">
+      <div class="section-header">
+        <div class="num">17</div>
+        <h2>Sequência — Concorrência (Lock Otimista)</h2>
+        <span class="tag tag-tp2">@Version · Integridade</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Duas usuárias editam a mesma gestante simultaneamente. A coluna <code>@Version</code> garante que a segunda gravação,
+            baseada em uma versão desatualizada, seja rejeitada com <code>OptimisticLockException</code> — traduzida pelo
+            <code>GlobalExceptionHandler</code> em <strong>HTTP 409 Conflict</strong>, evitando perda silenciosa de dados (lost update).
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    actor U1 as 👩 Usuária A
+    actor U2 as 👩 Usuária B
+    participant Service as GestanteService
+    participant DB as 🐘 PostgreSQL
+
+    Note over U1,U2: Ambas carregam a mesma gestante (version = 5)
+
+    U1->>Service: atualizar(id, dadosA)
+    Service->>DB: UPDATE gestantes SET ..., version=6 WHERE id=? AND version=5
+    DB-->>Service: 1 linha afetada ✓ (agora version = 6)
+    Service-->>U1: 200 OK
+
+    U2->>Service: atualizar(id, dadosB) [ainda com version = 5]
+    Service->>DB: UPDATE gestantes SET ..., version=6 WHERE id=? AND version=5
+    DB-->>Service: 0 linhas afetadas ✗
+    Service-->>U2: OptimisticLockException → 409 Conflict
+    Note over U2: Recarregar dados atualizados e repetir a edição
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 18. ENDPOINTS ===== -->
+    <div class="section" id="endpoints">
+      <div class="section-header">
+        <div class="num">18</div>
+        <h2>Endpoints da API REST</h2>
+        <span class="tag tag-api">24 endpoints</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Base URL: <code>http://localhost:8080</code>. Endpoints paginados aceitam <code>?page=&amp;size=&amp;sort=</code> (Spring <code>Pageable</code>).
+            Todas as respostas de erro seguem o padrão <code>{ timestamp, status, erro, mensagem, path }</code>.
+          </p>
+          <div class="table-wrap">
+          <table class="api-table">
+            <thead><tr><th>Método</th><th>Endpoint</th><th>Descrição</th><th>Resposta</th></tr></thead>
+            <tbody>
+              <tr class="api-section"><td colspan="4">👩 GESTANTES</td></tr>
+              <tr><td><span class="method m-post">POST</span></td><td class="endpoint">/api/gestantes</td><td>Cadastrar gestante</td><td>201 / 400 / 422</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes</td><td>Listar todas as gestantes</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes/paginado?nome=</td><td>Listar paginado (filtro por nome)</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes/{id}</td><td>Buscar gestante por ID</td><td>200 / 404</td></tr>
+              <tr><td><span class="method m-put">PUT</span></td><td class="endpoint">/api/gestantes/{id}</td><td>Atualizar dados da gestante</td><td>200 / 404 / 409</td></tr>
+              <tr><td><span class="method m-delete">DELETE</span></td><td class="endpoint">/api/gestantes/{id}</td><td>Remover gestante (cascade)</td><td>204 / 404</td></tr>
+
+              <tr class="api-section"><td colspan="4">🔬 PROCEDIMENTOS</td></tr>
+              <tr><td><span class="method m-post">POST</span></td><td class="endpoint">/api/procedimentos</td><td>Cadastrar procedimento</td><td>201 Created</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/procedimentos</td><td>Listar todos os procedimentos</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/procedimentos/paginado?tipo=&amp;trimestre=&amp;nome=</td><td>Listar paginado com filtros</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/procedimentos/{id}</td><td>Buscar procedimento por ID</td><td>200 / 404</td></tr>
+              <tr><td><span class="method m-put">PUT</span></td><td class="endpoint">/api/procedimentos/{id}</td><td>Atualizar procedimento</td><td>200 / 404 / 409</td></tr>
+              <tr><td><span class="method m-delete">DELETE</span></td><td class="endpoint">/api/procedimentos/{id}</td><td>Inativar procedimento (soft delete)</td><td>204 / 404</td></tr>
+
+              <tr class="api-section"><td colspan="4">✅ CHECKLIST</td></tr>
+              <tr><td><span class="method m-post">POST</span></td><td class="endpoint">/api/gestantes/{id}/checklist/gerar</td><td>Gerar checklist (1x por gestante)</td><td>201 / 422</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes/{id}/checklist?status=</td><td>Listar itens (filtro por status)</td><td>200 / 404</td></tr>
+              <tr><td><span class="method m-patch">PATCH</span></td><td class="endpoint">/api/checklist/{itemId}/status</td><td>Atualizar status com detalhes</td><td>200 / 422</td></tr>
+              <tr><td><span class="method m-patch">PATCH</span></td><td class="endpoint">/api/checklist/{itemId}/realizar</td><td>Marcar como REALIZADO (data=hoje)</td><td>200 / 404</td></tr>
+              <tr><td><span class="method m-patch">PATCH</span></td><td class="endpoint">/api/checklist/{itemId}/revisar</td><td>Marcar como PRECISA_REVISAR</td><td>200 / 404</td></tr>
+
+              <tr class="api-section"><td colspan="4">🏥 CONSULTAS</td></tr>
+              <tr><td><span class="method m-post">POST</span></td><td class="endpoint">/api/gestantes/{id}/consultas</td><td>Registrar consulta pré-natal</td><td>201 Created</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes/{id}/consultas</td><td>Listar consultas (desc por data)</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/gestantes/{id}/consultas/paginado</td><td>Listar consultas paginadas</td><td>200 OK</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/consultas/{id}</td><td>Buscar consulta por ID</td><td>200 / 404</td></tr>
+              <tr><td><span class="method m-put">PUT</span></td><td class="endpoint">/api/consultas/{id}</td><td>Atualizar consulta</td><td>200 / 404 / 409</td></tr>
+              <tr><td><span class="method m-delete">DELETE</span></td><td class="endpoint">/api/consultas/{id}</td><td>Remover consulta</td><td>204 / 404</td></tr>
+
+              <tr class="api-section"><td colspan="4">🕓 AUDITORIA (TP2)</td></tr>
+              <tr><td><span class="method m-get">GET</span></td><td class="endpoint">/api/auditoria/{entidade}/{id}</td><td>Histórico de revisões (gestante · procedimento · checklist · consulta)</td><td>200 / 422</td></tr>
+            </tbody>
+          </table>
+          </div>
+
+          <div style="margin-top:1.25rem">
+            <p style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;color:#334155">Regras de Negócio Implementadas</p>
+            <div class="rules-grid">
+              <div class="rule-card">Gestante precisa de DPP ou DUM (422)</div>
+              <div class="rule-card">Checklist gerado apenas uma vez por gestante (422 + UNIQUE)</div>
+              <div class="rule-card">Status REALIZADO exige dataRealizacao (422 / check)</div>
+              <div class="rule-card">Soft delete em procedimentos (ativo=false)</div>
+              <div class="rule-card">Procedimentos inativos não entram no checklist</div>
+              <div class="rule-card">Item inicia sempre como PENDENTE (@PrePersist)</div>
+              <div class="rule-card">dataAtualizacao atualizada automaticamente (@PreUpdate)</div>
+              <div class="rule-card">Edição concorrente detectada por @Version (409)</div>
+              <div class="rule-card">Toda mudança registrada no histórico (Envers)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 19. TESTES ===== -->
+    <div class="section" id="testes">
+      <div class="section-header">
+        <div class="num">19</div>
+        <h2>Testes Automatizados</h2>
+        <span class="tag tag-tp2">JUnit 5 · Testcontainers</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            A camada de persistência é coberta por testes de repositório (<code>@DataJpaTest</code>), um teste de integração do
+            histórico Envers (<code>@SpringBootTest</code>) e um teste de migrations com PostgreSQL real via <strong>Testcontainers</strong>.
+            Comando: <code>./mvnw test</code> (ou <code>mvnw.cmd test</code> no Windows).
+          </p>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Classe de Teste</th><th>Tipo</th><th>O que valida</th></tr></thead>
+              <tbody>
+                <tr><td class="endpoint">GestanteRepositoryTest</td><td>@DataJpaTest</td><td>Busca paginada por nome e por e-mail (ignore case)</td></tr>
+                <tr><td class="endpoint">ProcedimentoRepositoryTest</td><td>@DataJpaTest</td><td>Filtros por ativo, tipo, trimestre e semana recomendada</td></tr>
+                <tr><td class="endpoint">ItemChecklistGestanteRepositoryTest</td><td>@DataJpaTest</td><td>Constraint de duplicidade e filtro por status</td></tr>
+                <tr><td class="endpoint">ConsultaPreNatalRepositoryTest</td><td>@DataJpaTest</td><td>Ordenação desc por data e integridade do peso</td></tr>
+                <tr><td class="endpoint">AuditoriaIntegrationTest</td><td>@SpringBootTest</td><td>Cria e atualiza gestante, consulta revisões Envers (ADD + MOD)</td></tr>
+                <tr><td class="endpoint">MigrationIntegrationTest</td><td>Testcontainers</td><td>Sobe PostgreSQL real, aplica Flyway e valida o seed</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <span>⚠️</span>
+            <div><code>MigrationIntegrationTest</code> usa <code>@Testcontainers(disabledWithoutDocker = true)</code>: a suíte permanece
+            verde em ambientes sem Docker (o teste é pulado) e produz a evidência PostgreSQL quando o Docker está disponível.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 20. MICROSSERVIÇO: VISÃO DOS SERVIÇOS ===== -->
+    <div class="section" id="ms-visao">
+      <div class="section-header">
+        <div class="num">20</div>
+        <h2>Visão dos Serviços</h2>
+        <span class="tag tag-novo">TP3 · Microsserviço</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            Na <strong>Terceira Entrega</strong>, o cálculo de alertas foi extraído para o microsserviço
+            <strong>gestarafeto-alertas</strong>, com processo, porta e <strong>banco próprios</strong>.
+            O serviço principal continua dono do núcleo transacional (gestantes, procedimentos, checklist,
+            consultas) e conversa com o microsserviço apenas por <strong>REST</strong>.
+          </p>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Serviço</th><th>Porta</th><th>Banco</th><th>Responsabilidade</th></tr></thead>
+              <tbody>
+                <tr><td class="endpoint">GestarAfeto</td><td>8080</td><td>gestarafeto (5432)</td><td>Gestantes, procedimentos, checklist, consultas, auditoria</td></tr>
+                <tr><td class="endpoint">gestarafeto-alertas</td><td>8081</td><td>gestarafeto_alertas (5433)</td><td>Priorização do checklist em alertas acionáveis</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart LR
+    U(["👩 Usuária"]) --> FE["⚛️ React SPA"]
+    FE -->|"HTTP :8080"| MAIN["🏥 Serviço principal<br/>GestarAfeto"]
+    MAIN -->|"REST via Feign :8081"| MS["🔔 Microsserviço<br/>gestarafeto-alertas"]
+    MAIN --> DB[("🗄️ gestarafeto")]
+    MS --> ADB[("🗄️ gestarafeto_alertas")]
+
+    style MAIN fill:#7c3aed,color:white
+    style MS fill:#f59e0b,color:white
+            </pre>
+          </div>
+          <div class="callout">
+            <span>🔒</span>
+            <div>Cada serviço é dono do seu banco (<strong>database-per-service</strong>). Não há chave estrangeira,
+            join ou transação distribuída entre eles — nenhum serviço tem credenciais para o banco do outro,
+            o que <em>força</em> a integração a passar pela API REST.</div>
+          </div>
+          <div class="callout">
+            <span>🎯</span>
+            <div><strong>Por que este recorte:</strong> alertas têm dados próprios (ciclo de vida aberto/lido/resolvido
+            que o checklist não modela), regra volátil (limiares mudam com protocolos clínicos) e carga assimétrica
+            (reavaliação em lote, muito mais frequente que as escritas do cadastro). O cadastro de gestantes, ao
+            contrário, é o núcleo transacional e precisa de integridade forte — separá-lo criaria consistência
+            eventual onde ela não é aceitável.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 21. DOMÍNIO DE ALERTAS ===== -->
+    <div class="section" id="ms-dominio">
+      <div class="section-header">
+        <div class="num">21</div>
+        <h2>Domínio de Alertas</h2>
+        <span class="tag tag-novo">Bounded Context</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O contexto de alertas é independente: ele <strong>não enxerga</strong> <code>Gestante</code>,
+            <code>ProcedimentoPreNatal</code> nem <code>ItemChecklistGestante</code>. Recebe um recorte
+            desses dados (<code>ItemChecklistSnapshot</code>) e mantém apenas o que é seu.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart LR
+    subgraph P["Serviço principal — banco gestarafeto"]
+        G["Gestante"]
+        PR["ProcedimentoPreNatal"]
+        IC["ItemChecklistGestante"]
+        G --- IC
+        PR --- IC
+    end
+
+    subgraph A["Microsserviço — banco gestarafeto_alertas"]
+        AL["Alerta"]
+    end
+
+    IC -. "snapshot HTTP<br/>(sem FK entre bancos)" .-> AL
+    AL -. "gestante_id / origem_id<br/>referências lógicas" .-> G
+
+    style A fill:#fef3c7
+            </pre>
+          </div>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Campo</th><th>Papel</th></tr></thead>
+              <tbody>
+                <tr><td class="endpoint">gestanteId</td><td>Referência lógica à gestante no serviço principal. Sem FK.</td></tr>
+                <tr><td class="endpoint">gestanteNome</td><td>Replicado na avaliação, para listar alertas sem chamar o serviço principal de volta.</td></tr>
+                <tr><td class="endpoint">origemId</td><td>Id do item de checklist que originou o alerta.</td></tr>
+                <tr><td class="endpoint">tipo</td><td>PROCEDIMENTO_ATRASADO · PROCEDIMENTO_PENDENTE · JANELA_PROXIMA · REVISAO_SOLICITADA</td></tr>
+                <tr><td class="endpoint">prioridade</td><td>ALTA · MEDIA · BAIXA</td></tr>
+                <tr><td class="endpoint">status</td><td>ABERTO · LIDO · RESOLVIDO · CANCELADO</td></tr>
+                <tr><td class="endpoint">dataReferencia</td><td>Data estimada do procedimento, quando a DUM é conhecida.</td></tr>
+                <tr><td class="endpoint">version</td><td>Lock otimista, como nas entidades do serviço principal.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <span>🔑</span>
+            <div>A constraint <code>uk_alerta_origem_tipo (gestante_id, origem_id, tipo)</code> é o que torna a
+            reavaliação <strong>idempotente</strong>: cada par item/motivo tem no máximo uma linha, então
+            reavaliar nunca duplica.</div>
+          </div>
+          <div class="callout">
+            <span>⚠️</span>
+            <div>Os dados são <strong>eventualmente consistentes</strong>. Se o microsserviço estiver fora do ar
+            quando o checklist mudar, os alertas ficam defasados até a próxima reavaliação — que reconcilia tudo
+            de uma vez. Em troca, o cadastro de gestantes nunca fica indisponível por causa do serviço de alertas.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 22. MOTOR DE REGRAS ===== -->
+    <div class="section" id="ms-regras">
+      <div class="section-header">
+        <div class="num">22</div>
+        <h2>Motor de Regras</h2>
+        <span class="tag tag-novo">Regra de Negócio</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            <code>MotorDeRegrasAlerta</code> é uma classe <strong>sem estado e sem acesso a banco</strong>, o que a
+            torna testável isoladamente. Ela estima a semana gestacional e classifica cada item pendente.
+          </p>
+          <p class="description">
+            <strong>Semana gestacional:</strong> calculada a partir da DUM (<em>semanas completas + 1</em>). Sem DUM,
+            é derivada da DPP (<em>total − semanas restantes</em>). Sem nenhuma das duas, as regras baseadas em
+            janela não se aplicam. O resultado é limitado a 1..42.
+          </p>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Situação do item</th><th>Tipo</th><th>Prioridade</th></tr></thead>
+              <tbody>
+                <tr><td>PRECISA_REVISAR</td><td class="endpoint">REVISAO_SOLICITADA</td><td>ALTA</td></tr>
+                <tr><td>PENDENTE, semana atual &gt; semana final</td><td class="endpoint">PROCEDIMENTO_ATRASADO</td><td>ALTA se obrigatório, senão MEDIA</td></tr>
+                <tr><td>PENDENTE, semana atual dentro da janela</td><td class="endpoint">PROCEDIMENTO_PENDENTE</td><td>MEDIA se obrigatório, senão BAIXA</td></tr>
+                <tr><td>PENDENTE, janela começa em até 2 semanas</td><td class="endpoint">JANELA_PROXIMA</td><td>BAIXA</td></tr>
+                <tr><td>REALIZADO ou NAO_SE_APLICA</td><td>—</td><td>alerta existente é resolvido</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="description">
+            <strong>Reconciliação.</strong> <code>AlertaService.avaliar</code> compara o resultado do motor com o
+            que já está gravado, pela chave <code>(origemId, tipo)</code>:
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart TD
+    S["Snapshot do checklist"] --> M["MotorDeRegrasAlerta"]
+    M --> D["Alertas desejados"]
+    E["Alertas gravados"] --> C{"Comparar por<br/>(origemId, tipo)"}
+    D --> C
+
+    C -->|"desejado, inexistente"| N["Cria como ABERTO"]
+    C -->|"desejado, existente ativo"| U["Atualiza texto e prioridade<br/>PRESERVA status LIDO"]
+    C -->|"desejado, existente encerrado"| R["Reabre"]
+    C -->|"gravado, não mais desejado"| X["Marca RESOLVIDO<br/>(nunca apaga)"]
+
+    style N fill:#dcfce7
+    style U fill:#e0f2fe
+    style R fill:#fef3c7
+    style X fill:#f1f5f9
+            </pre>
+          </div>
+          <div class="callout">
+            <span>🧠</span>
+            <div>Preservar o status <code>LIDO</code> na reavaliação é o que evita que um alerta já conferido pela
+            equipe volte a aparecer como novo a cada mudança no checklist.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 23. INTEGRAÇÃO & SPRING CLOUD ===== -->
+    <div class="section" id="ms-integracao">
+      <div class="section-header">
+        <div class="num">23</div>
+        <h2>Integração &amp; Spring Cloud</h2>
+        <span class="tag tag-novo">OpenFeign · Config</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Componente</th><th>Onde</th><th>Para quê</th></tr></thead>
+              <tbody>
+                <tr><td class="endpoint">OpenFeign</td><td>serviço principal</td><td><code>AlertaClient</code> declara o contrato remoto como interface Java; o Feign gera a implementação HTTP.</td></tr>
+                <tr><td class="endpoint">CircuitBreaker (Resilience4j)</td><td>serviço principal</td><td>Interrompe chamadas a um microsserviço já indisponível e ativa o fallback.</td></tr>
+                <tr><td class="endpoint">spring-cloud-context</td><td>microsserviço</td><td><code>ConfigurationPropertiesRebinder</code> reaplica as regras em <code>POST /actuator/refresh</code>.</td></tr>
+                <tr><td class="endpoint">spring-cloud-config</td><td>microsserviço</td><td>Cliente de Config Server, com import <code>optional:</code>. Desligado por padrão.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="description">
+            <strong>Configuração distribuída.</strong> Os parâmetros do motor são externalizados
+            (<code>antecedencia-semanas</code>, <code>semanas-gestacao-total</code>,
+            <code>alertar-nao-obrigatorios</code>). Com um Config Server no ar, um
+            <code>POST /actuator/refresh</code> reaplica os valores <strong>sem reiniciar</strong> o serviço — o
+            rebind acontece sobre a mesma instância do bean, então o motor passa a usar os novos limiares
+            imediatamente. O prefixo <code>optional:</code> garante que a ausência do Config Server nunca impeça
+            a inicialização.
+          </p>
+          <p class="description">
+            <strong>Sincronização por eventos.</strong> O <code>ChecklistService</code> não conhece alertas:
+            apenas publica <code>ChecklistAlteradoEvent</code>. O listener reage em <code>AFTER_COMMIT</code>,
+            garantindo que o microsserviço só seja chamado depois que a alteração está gravada — e nunca dentro
+            de uma transação aberta.
+          </p>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    participant CS as ChecklistService
+    participant DB as PostgreSQL
+    participant EV as ApplicationEventPublisher
+    participant L as ChecklistAlteradoListener
+    participant MS as Microsserviço
+
+    CS->>DB: UPDATE item (status = REALIZADO)
+    CS->>EV: publish(ChecklistAlteradoEvent)
+    DB-->>CS: commit
+    Note over EV,L: @TransactionalEventListener(AFTER_COMMIT)
+    EV->>L: aoAlterarChecklist(evento)
+    L->>MS: POST /api/alertas/avaliacoes
+    alt microsserviço fora do ar
+        MS--xL: falha
+        L->>L: registra aviso, não propaga
+        Note over L: o checklist já foi salvo:<br/>a usuária não vê erro
+    end
+            </pre>
+          </div>
+          <div class="callout">
+            <span>🧩</span>
+            <div>Os eventos ficam em <code>shared.event</code>, não no pacote de alertas. Assim os publicadores
+            (checklist e gestante) não dependem do consumidor: o listener é o <em>único</em> ponto de acoplamento
+            entre os domínios.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 24. RESILIÊNCIA ===== -->
+    <div class="section" id="ms-resiliencia">
+      <div class="section-header">
+        <div class="num">24</div>
+        <h2>Resiliência</h2>
+        <span class="tag tag-novo">Circuit Breaker</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O fallback (<code>AlertaClientFallbackFactory</code>) trata leituras e escritas de forma
+            <strong>deliberadamente assimétrica</strong>:
+          </p>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Operação</th><th>Comportamento sem o microsserviço</th><th>Por quê</th></tr></thead>
+              <tbody>
+                <tr><td>Leituras e reavaliações</td><td>Devolvem vazio</td><td>O acompanhamento pré-natal continua funcionando; o painel de alertas é complementar.</td></tr>
+                <tr><td>Marcar como lido / resolver</td><td>Falham com <strong>503</strong></td><td>Fingir sucesso faria a interface exibir um estado que o microsserviço nunca registrou.</td></tr>
+                <tr><td>Remoção de alertas</td><td>Registra aviso e segue</td><td>Um serviço auxiliar não pode bloquear a exclusão de uma gestante.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+sequenceDiagram
+    participant FE as React
+    participant AC as AlertaController
+    participant CB as CircuitBreaker
+    participant FB as Fallback
+    participant MS as Microsserviço
+
+    FE->>AC: GET /api/gestantes/1/alertas
+    AC->>CB: listarPorGestante(1)
+    CB->>MS: GET /api/alertas/gestante/1
+    MS--xCB: connection refused
+    CB->>FB: create(causa)
+    FB-->>AC: lista vazia (degradação)
+    AC-->>FE: 200 OK com []
+    Note over CB: falhas > 50% na janela<br/>circuito ABERTO por 10s
+
+    FE->>AC: PATCH /api/alertas/9/resolucao
+    AC->>CB: resolver(9)
+    CB-->>FB: circuito aberto, nem tenta
+    FB--xAC: ServicoIndisponivelException
+    AC-->>FE: 503 Service Unavailable
+            </pre>
+          </div>
+          <div class="callout">
+            <span>🛟</span>
+            <div>Configuração: janela de 10 chamadas, limiar de 50% de falha, 10s em estado aberto e 3 chamadas
+            de teste em <code>HALF_OPEN</code>. Timeouts de 2s (conexão) e 5s (leitura).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 25. ENDPOINTS DE ALERTAS ===== -->
+    <div class="section" id="ms-endpoints">
+      <div class="section-header">
+        <div class="num">25</div>
+        <h2>Endpoints de Alertas</h2>
+        <span class="tag tag-novo">REST</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            O front-end <strong>não fala com o microsserviço diretamente</strong>. Isso mantém uma única origem
+            HTTP no navegador, concentra o tratamento de erro e permite validar a existência da gestante antes de
+            encaminhar a chamada.
+          </p>
+          <h3 style="font-size:.95rem;margin:1rem 0 .5rem">Fachada no serviço principal — :8080</h3>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th></tr></thead>
+              <tbody>
+                <tr><td>POST</td><td class="endpoint">/api/gestantes/{id}/alertas/avaliar</td><td>Monta o snapshot do checklist e reavalia</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/gestantes/{id}/alertas</td><td>Alertas ativos da gestante</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/gestantes/{id}/alertas/resumo</td><td>Contagens agregadas por prioridade e status</td></tr>
+                <tr><td>PATCH</td><td class="endpoint">/api/alertas/{id}/leitura</td><td>Marca como lido</td></tr>
+                <tr><td>PATCH</td><td class="endpoint">/api/alertas/{id}/resolucao</td><td>Resolve o alerta</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 style="font-size:.95rem;margin:1.25rem 0 .5rem">API do microsserviço — :8081</h3>
+          <div class="table-wrap">
+            <table class="api-table">
+              <thead><tr><th>Método</th><th>Rota</th><th>Descrição</th></tr></thead>
+              <tbody>
+                <tr><td>POST</td><td class="endpoint">/api/alertas/avaliacoes</td><td>Reavalia o checklist. Idempotente.</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/alertas?gestanteId=&amp;status=&amp;prioridade=</td><td>Listagem paginada com filtros</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/alertas/gestante/{id}</td><td>Ativos, ordenados por severidade</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/alertas/gestante/{id}/resumo</td><td>Contagens agregadas</td></tr>
+                <tr><td>GET</td><td class="endpoint">/api/alertas/{id}</td><td>Detalhe de um alerta</td></tr>
+                <tr><td>PATCH</td><td class="endpoint">/api/alertas/{id}/leitura</td><td>Marca como lido</td></tr>
+                <tr><td>PATCH</td><td class="endpoint">/api/alertas/{id}/resolucao</td><td>Resolve manualmente</td></tr>
+                <tr><td>PATCH</td><td class="endpoint">/api/alertas/{id}/cancelamento</td><td>Descarta o alerta</td></tr>
+                <tr><td>DELETE</td><td class="endpoint">/api/alertas/gestante/{id}</td><td>Remove todos os alertas da gestante</td></tr>
+                <tr><td>POST</td><td class="endpoint">/actuator/refresh</td><td>Reaplica a configuração das regras</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <span>⚛️</span>
+            <div>No front-end, a aba <strong>Alertas</strong> (<code>AlertasPage</code> + <code>AlertaCard</code>)
+            exibe contagens por prioridade, permite filtrar e executar as ações de leitura e resolução.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 26. EVOLUÇÃO FUTURA ===== -->
+    <div class="section" id="microsservicos">
+      <div class="section-header">
+        <div class="num">26</div>
+        <h2>Evolução para Microsserviços</h2>
+        <span class="tag">Visão Futura</span>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="description">
+            A organização por domínio facilitou a extração do <strong>ms-alertas</strong>, já implementado nesta
+            entrega (seções 20 a 25) com banco dedicado, Spring Cloud OpenFeign e circuit breaker. O diagrama
+            abaixo mostra o destino completo: os demais serviços permanecem como <strong>visão futura</strong>.
+          </p>
+          <div class="callout">
+            <span>✅</span>
+            <div><strong>Já implementado:</strong> <code>ms-alertas</code> com banco próprio, comunicação REST via
+            Feign, fallback com circuit breaker e sincronização por eventos de domínio.
+            <br><strong>Ainda futuro:</strong> API Gateway, message broker no lugar do REST síncrono, e a extração
+            dos demais domínios — que hoje continuam no serviço principal por precisarem de integridade
+            transacional forte.</div>
+          </div>
+          <div class="mermaid-wrap">
+            <pre class="mermaid">
+flowchart TD
+    Client(["👩 Cliente"]) --> GW
+
+    GW["🌐 API Gateway\n(roteamento / autenticação)"]
+
+    GW --> MS1["📋 ms-gestantes\n:8081"]
+    GW --> MS2["🔬 ms-procedimentos\n:8082"]
+    GW --> MS3["✅ ms-checklist\n:8083"]
+    GW --> MS4["🏥 ms-consultas\n:8084"]
+    GW --> MS5["🔔 ms-alertas :8081\nIMPLEMENTADO"]
+    GW --> MS6["📊 ms-relatorios\n:8086"]
+
+    MS1 --> DB1[("DB\nGestantes")]
+    MS2 --> DB2[("DB\nProcedimentos")]
+    MS3 --> DB3[("DB\nChecklist")]
+    MS4 --> DB4[("DB\nConsultas")]
+
+    MS3 -->|"evento: item atualizado"| MQ["📨 Message Broker\n(RabbitMQ / Kafka)"]
+    MQ --> MS5
+    MS5 --> MS6
+
+    MS3 -->|"REST"| MS1
+    MS3 -->|"REST"| MS2
+
+    style GW fill:#7c3aed,color:white
+    style MQ fill:#f59e0b,color:white
+    style MS5 fill:#f59e0b,color:white
+    style MS6 fill:#f1f5f9,stroke:#94a3b8
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="margin-top:2rem;padding-top:1rem;border-top:1px solid var(--slate-200);font-size:.8rem;color:var(--slate-400);text-align:center">
+      GestarAfeto v3.0.0 · Terceira Entrega: Microsserviço de Alertas (Spring Cloud · OpenFeign · Resilience4j) · 2026-08-19
+      <br>Grupo: estevezalvarez · Disciplina: Desenvolvimento de Software Escalável
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose', flowchart: { curve: 'basis' } });
+
+  // Active sidebar highlight on scroll
+  const sections = document.querySelectorAll('.section');
+  const links = document.querySelectorAll('aside a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`aside a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

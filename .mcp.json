@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "codeatlas": {
+      "command": "codeatlas",
+      "args": [
+        "mcp",
+        "serve",
+        "C:\\Users\\Afect\\Downloads\\GestarAfeto\\GestarAfeto"
+      ]
+    }
+  }
+}

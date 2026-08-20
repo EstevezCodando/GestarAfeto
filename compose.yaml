@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gestarafeto-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gestarafeto}
+      POSTGRES_USER: ${POSTGRES_USER:-gestarafeto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gestarafeto}
+    ports:
+      - "5432:5432"
+    volumes:
+      - gestarafeto_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gestarafeto} -d ${POSTGRES_DB:-gestarafeto}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Banco exclusivo do microsservico de alertas (padrao database-per-service).
+  # Fica em um container e volume proprios: nenhum dos dois servicos consegue ler
+  # as tabelas do outro, o que forca a integracao a acontecer pela API REST.
+  postgres-alertas:
+    image: postgres:16-alpine
+    container_name: gestarafeto-postgres-alertas
+    environment:
+      POSTGRES_DB: ${POSTGRES_ALERTAS_DB:-gestarafeto_alertas}
+      POSTGRES_USER: ${POSTGRES_ALERTAS_USER:-gestarafeto}
+      POSTGRES_PASSWORD: ${POSTGRES_ALERTAS_PASSWORD:-gestarafeto}
+    ports:
+      - "5433:5432"
+    volumes:
+      - gestarafeto_alertas_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ALERTAS_USER:-gestarafeto} -d ${POSTGRES_ALERTAS_DB:-gestarafeto_alertas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gestarafeto_postgres_data:
+  gestarafeto_alertas_postgres_data:

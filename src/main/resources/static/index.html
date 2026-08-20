@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GestarAfeto – Acompanhamento Pré-Natal</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh; }
+    header { background: #7c3aed; color: white; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header p { font-size: .85rem; opacity: .85; }
+    header a.docs-link { color: rgba(255,255,255,.85); text-decoration: none; font-size: .85rem; border: 1px solid rgba(255,255,255,.4); padding: .35rem .75rem; border-radius: 6px; transition: all .2s; white-space: nowrap; }
+    header a.docs-link:hover { background: rgba(255,255,255,.15); color: white; }
+    .aviso { background: #fef3c7; border-left: 4px solid #f59e0b; padding: .75rem 1rem; margin: 1rem 2rem; border-radius: 4px; font-size: .85rem; }
+    nav { background: white; border-bottom: 1px solid #e2e8f0; padding: 0 2rem; display: flex; gap: 0; }
+    nav button { padding: .75rem 1.25rem; border: none; background: none; cursor: pointer; font-size: .9rem; color: #64748b; border-bottom: 3px solid transparent; transition: all .2s; }
+    nav button.active, nav button:hover { color: #7c3aed; border-bottom-color: #7c3aed; }
+    main { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .card { background: white; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1px solid #e2e8f0; }
+    .card h3 { font-size: 1rem; margin-bottom: .5rem; color: #1e293b; }
+    .card p { font-size: .85rem; color: #64748b; }
+    .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .badge-PENDENTE { background: #fef9c3; color: #92400e; }
+    .badge-REALIZADO { background: #dcfce7; color: #166534; }
+    .badge-NAO_SE_APLICA { background: #f1f5f9; color: #64748b; }
+    .badge-PRECISA_REVISAR { background: #fee2e2; color: #991b1b; }
+    .badge-CONSULTA { background: #ede9fe; color: #5b21b6; }
+    .badge-EXAME { background: #dbeafe; color: #1d4ed8; }
+    .badge-VACINA { background: #dcfce7; color: #166534; }
+    .badge-ORIENTACAO { background: #fef3c7; color: #92400e; }
+    .badge-ULTRASSONOGRAFIA { background: #fce7f3; color: #9d174d; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: #475569; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: .5rem .75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: .9rem; }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .btn { padding: .5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-size: .875rem; font-weight: 600; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #7c3aed; color: white; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-warning { background: #d97706; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-sm { padding: .3rem .6rem; font-size: .8rem; }
+    .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+    .actions { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+    .error { color: #dc2626; background: #fee2e2; padding: .5rem .75rem; border-radius: 4px; font-size: .85rem; margin: .5rem 0; }
+    .success { color: #16a34a; background: #dcfce7; padding: .5rem .75rem; border-radius: 4px; font-size: .85rem; margin: .5rem 0; }
+    .loading { color: #64748b; font-style: italic; }
+    .checklist-item { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: .5rem; }
+    .checklist-item .info { flex: 1; }
+    .checklist-item .info h4 { font-size: .9rem; margin-bottom: .25rem; }
+    .checklist-item .info small { color: #64748b; font-size: .8rem; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: white; border-radius: 8px; padding: 1rem; border: 1px solid #e2e8f0; text-align: center; }
+    .stat-card .number { font-size: 2rem; font-weight: 700; color: #7c3aed; }
+    .stat-card .label { font-size: .8rem; color: #64748b; margin-top: .25rem; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: white; border-radius: 10px; padding: 1.5rem; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const API = 'http://localhost:8080/api';
+
+    const fetcher = async (url, opts = {}) => {
+      const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+      if (!r.ok) { const e = await r.json().catch(() => ({ mensagem: r.statusText })); throw new Error(e.mensagem || r.statusText); }
+      if (r.status === 204) return null;
+      return r.json();
+    };
+
+    function useApi(url) {
+      const [data, setData] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [error, setError] = React.useState(null);
+      const load = React.useCallback(() => {
+        setLoading(true); setError(null);
+        fetcher(url).then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
+      }, [url]);
+      React.useEffect(() => { load(); }, [load]);
+      return { data, loading, error, reload: load };
+    }
+
+    /* ---- DASHBOARD ---- */
+    function Dashboard({ onNav }) {
+      const { data: gestantes, loading } = useApi(`${API}/gestantes`);
+      const { data: procedimentos } = useApi(`${API}/procedimentos`);
+      if (loading) return <p className="loading">Carregando...</p>;
+      return (
+        <div>
+          <div className="stats">
+            <div className="stat-card"><div className="number">{gestantes?.length ?? 0}</div><div className="label">Gestantes</div></div>
+            <div className="stat-card"><div className="number">{procedimentos?.filter(p => p.ativo).length ?? 0}</div><div className="label">Procedimentos Ativos</div></div>
+          </div>
+          <p style={{color:'#64748b', fontSize:'.9rem'}}>Use o menu acima para cadastrar gestantes, visualizar procedimentos e gerenciar checklists.</p>
+        </div>
+      );
+    }
+
+    /* ---- GESTANTES ---- */
+    function GestantesPage() {
+      const { data: gestantes, loading, error, reload } = useApi(`${API}/gestantes`);
+      const [showForm, setShowForm] = React.useState(false);
+      const [selected, setSelected] = React.useState(null);
+
+      const del = async (id) => {
+        if (!confirm('Remover gestante?')) return;
+        try { await fetcher(`${API}/gestantes/${id}`, { method: 'DELETE' }); reload(); }
+        catch(e) { alert(e.message); }
+      };
+
+      return (
+        <div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+            <h2 className="section-title" style={{margin:0}}>Gestantes</h2>
+            <button className="btn btn-primary" onClick={() => { setSelected(null); setShowForm(true); }}>+ Nova Gestante</button>
+          </div>
+          {error && <div className="error">{error}</div>}
+          {loading ? <p className="loading">Carregando...</p> : (
+            <div className="grid">
+              {gestantes?.map(g => (
+                <div className="card" key={g.id}>
+                  <h3>{g.nome}</h3>
+                  <p>📞 {g.telefone || '—'}</p>
+                  <p>✉️ {g.email || '—'}</p>
+                  <p>🍼 DPP: {g.dataProvavelParto || '—'}</p>
+                  <p style={{fontSize:'.75rem', color:'#94a3b8', marginTop:'.5rem'}}>Cadastro: {g.dataCadastro?.slice(0,10)}</p>
+                  <div className="actions">
+                    <button className="btn btn-sm btn-primary" onClick={() => { setSelected(g); setShowForm(true); }}>Editar</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => del(g.id)}>Remover</button>
+                  </div>
+                </div>
+              ))}
+              {gestantes?.length === 0 && <p className="loading">Nenhuma gestante cadastrada.</p>}
+            </div>
+          )}
+          {showForm && <GestanteModal gestante={selected} onClose={() => setShowForm(false)} onSaved={reload} />}
+        </div>
+      );
+    }
+
+    function GestanteModal({ gestante, onClose, onSaved }) {
+      const [form, setForm] = React.useState({
+        nome: gestante?.nome || '', dataNascimento: gestante?.dataNascimento || '',
+        telefone: gestante?.telefone || '', email: gestante?.email || '',
+        dataUltimaMenstruacao: gestante?.dataUltimaMenstruacao || '',
+        dataProvavelParto: gestante?.dataProvavelParto || '', observacoes: gestante?.observacoes || ''
+      });
+      const [error, setError] = React.useState(null);
+      const [saving, setSaving] = React.useState(false);
+
+      const save = async (e) => {
+        e.preventDefault(); setSaving(true); setError(null);
+        try {
+          const body = { ...form, dataNascimento: form.dataNascimento || null, dataUltimaMenstruacao: form.dataUltimaMenstruacao || null, dataProvavelParto: form.dataProvavelParto || null };
+          if (gestante) await fetcher(`${API}/gestantes/${gestante.id}`, { method:'PUT', body: JSON.stringify(body) });
+          else await fetcher(`${API}/gestantes`, { method:'POST', body: JSON.stringify(body) });
+          onSaved(); onClose();
+        } catch(e) { setError(e.message); } finally { setSaving(false); }
+      };
+
+      const f = (k) => (e) => setForm(p => ({...p, [k]: e.target.value}));
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal">
+            <h2>{gestante ? 'Editar Gestante' : 'Nova Gestante'}</h2>
+            {error && <div className="error">{error}</div>}
+            <form onSubmit={save}>
+              <div className="form-group"><label>Nome *</label><input required value={form.nome} onChange={f('nome')} /></div>
+              <div className="form-group"><label>Data de Nascimento</label><input type="date" value={form.dataNascimento} onChange={f('dataNascimento')} /></div>
+              <div className="form-group"><label>Telefone</label><input value={form.telefone} onChange={f('telefone')} /></div>
+              <div className="form-group"><label>E-mail</label><input type="email" value={form.email} onChange={f('email')} /></div>
+              <div className="form-group"><label>Data da Última Menstruação</label><input type="date" value={form.dataUltimaMenstruacao} onChange={f('dataUltimaMenstruacao')} /></div>
+              <div className="form-group"><label>Data Provável do Parto</label><input type="date" value={form.dataProvavelParto} onChange={f('dataProvavelParto')} /></div>
+              <div className="form-group"><label>Observações</label><textarea value={form.observacoes} onChange={f('observacoes')} /></div>
+              <div className="actions">
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+                <button type="button" className="btn" style={{background:'#e2e8f0'}} onClick={onClose}>Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---- PROCEDIMENTOS ---- */
+    function ProcedimentosPage() {
+      const { data: procedimentos, loading, error, reload } = useApi(`${API}/procedimentos`);
+      const [showForm, setShowForm] = React.useState(false);
+
+      return (
+        <div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+            <h2 className="section-title" style={{margin:0}}>Procedimentos</h2>
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Novo Procedimento</button>
+          </div>
+          {error && <div className="error">{error}</div>}
+          {loading ? <p className="loading">Carregando...</p> : (
+            <div className="grid">
+              {procedimentos?.map(p => (
+                <div className="card" key={p.id} style={{opacity: p.ativo ? 1 : .5}}>
+                  <h3>{p.nome}</h3>
+                  <p style={{marginBottom:'.5rem'}}>{p.descricao}</p>
+                  <span className={`badge badge-${p.tipo}`}>{p.tipo}</span>
+                  {p.trimestreRecomendado && <span style={{marginLeft:'.5rem', fontSize:'.75rem', color:'#64748b'}}>{p.trimestreRecomendado} trimestre</span>}
+                  <p style={{fontSize:'.75rem', color:'#94a3b8', marginTop:'.5rem'}}>Semanas {p.semanaInicialRecomendada}–{p.semanaFinalRecomendada} · {p.obrigatorio ? 'Obrigatório' : 'Opcional'} · {p.ativo ? 'Ativo' : 'Inativo'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {showForm && <ProcedimentoModal onClose={() => setShowForm(false)} onSaved={reload} />}
+        </div>
+      );
+    }
+
+    function ProcedimentoModal({ onClose, onSaved }) {
+      const [form, setForm] = React.useState({ nome:'', descricao:'', tipo:'CONSULTA', trimestreRecomendado:'', semanaInicialRecomendada:'', semanaFinalRecomendada:'', obrigatorio: true });
+      const [error, setError] = React.useState(null);
+      const [saving, setSaving] = React.useState(false);
+      const tipos = ['CONSULTA','EXAME','VACINA','ORIENTACAO','ULTRASSONOGRAFIA'];
+      const trimestres = ['','PRIMEIRO','SEGUNDO','TERCEIRO'];
+
+      const save = async (e) => {
+        e.preventDefault(); setSaving(true); setError(null);
+        try {
+          const body = { ...form, trimestreRecomendado: form.trimestreRecomendado || null, semanaInicialRecomendada: form.semanaInicialRecomendada ? +form.semanaInicialRecomendada : null, semanaFinalRecomendada: form.semanaFinalRecomendada ? +form.semanaFinalRecomendada : null };
+          await fetcher(`${API}/procedimentos`, { method:'POST', body: JSON.stringify(body) });
+          onSaved(); onClose();
+        } catch(e) { setError(e.message); } finally { setSaving(false); }
+      };
+      const f = (k) => (e) => setForm(p => ({...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value}));
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal">
+            <h2>Novo Procedimento</h2>
+            {error && <div className="error">{error}</div>}
+            <form onSubmit={save}>
+              <div className="form-group"><label>Nome *</label><input required value={form.nome} onChange={f('nome')} /></div>
+              <div className="form-group"><label>Descrição</label><textarea value={form.descricao} onChange={f('descricao')} /></div>
+              <div className="form-group"><label>Tipo *</label><select value={form.tipo} onChange={f('tipo')}>{tipos.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+              <div className="form-group"><label>Trimestre</label><select value={form.trimestreRecomendado} onChange={f('trimestreRecomendado')}>{trimestres.map(t => <option key={t} value={t}>{t || 'Todos'}</option>)}</select></div>
+              <div className="form-group"><label>Semana Inicial</label><input type="number" min="1" max="40" value={form.semanaInicialRecomendada} onChange={f('semanaInicialRecomendada')} /></div>
+              <div className="form-group"><label>Semana Final</label><input type="number" min="1" max="40" value={form.semanaFinalRecomendada} onChange={f('semanaFinalRecomendada')} /></div>
+              <div className="form-group" style={{display:'flex', gap:'.5rem', alignItems:'center'}}><input type="checkbox" id="obr" checked={form.obrigatorio} onChange={f('obrigatorio')} /><label htmlFor="obr">Obrigatório</label></div>
+              <div className="actions">
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+                <button type="button" className="btn" style={{background:'#e2e8f0'}} onClick={onClose}>Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---- CHECKLIST ---- */
+    function ChecklistPage() {
+      const { data: gestantes } = useApi(`${API}/gestantes`);
+      const [gestanteId, setGestanteId] = React.useState('');
+      const [itens, setItens] = React.useState(null);
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [msg, setMsg] = React.useState(null);
+
+      const carregar = async (id) => {
+        if (!id) return;
+        setLoading(true); setError(null); setMsg(null);
+        try { const data = await fetcher(`${API}/gestantes/${id}/checklist`); setItens(data); }
+        catch(e) { setError(e.message); setItens(null); }
+        finally { setLoading(false); }
+      };
+
+      const gerar = async () => {
+        setLoading(true); setError(null); setMsg(null);
+        try { const data = await fetcher(`${API}/gestantes/${gestanteId}/checklist/gerar`, { method:'POST' }); setItens(data); setMsg('Checklist gerado com sucesso!'); }
+        catch(e) { setError(e.message); }
+        finally { setLoading(false); }
+      };
+
+      const acao = async (itemId, endpoint, method = 'PATCH', body = null) => {
+        setError(null); setMsg(null);
+        try {
+          const opts = { method };
+          if (body) opts.body = JSON.stringify(body);
+          const updated = await fetcher(`${API}/checklist/${itemId}/${endpoint}`, opts);
+          setItens(prev => prev.map(i => i.id === itemId ? updated : i));
+        } catch(e) { setError(e.message); }
+      };
+
+      const statusColor = { PENDENTE: 'badge-PENDENTE', REALIZADO: 'badge-REALIZADO', NAO_SE_APLICA: 'badge-NAO_SE_APLICA', PRECISA_REVISAR: 'badge-PRECISA_REVISAR' };
+
+      return (
+        <div>
+          <h2 className="section-title">Checklist Pré-Natal</h2>
+          <div style={{display:'flex', gap:'1rem', marginBottom:'1rem', flexWrap:'wrap', alignItems:'flex-end'}}>
+            <div className="form-group" style={{margin:0, flex:1, minWidth:'200px'}}>
+              <label>Gestante</label>
+              <select value={gestanteId} onChange={e => { setGestanteId(e.target.value); carregar(e.target.value); }}>
+                <option value="">Selecione...</option>
+                {gestantes?.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-primary" disabled={!gestanteId || loading} onClick={gerar}>Gerar Checklist</button>
+          </div>
+          {msg && <div className="success">{msg}</div>}
+          {error && <div className="error">{error}</div>}
+          {loading && <p className="loading">Carregando...</p>}
+          {itens && (
+            <div>
+              <p style={{fontSize:'.85rem', color:'#64748b', marginBottom:'.75rem'}}>
+                {itens.length} itens · {itens.filter(i=>i.status==='REALIZADO').length} realizados · {itens.filter(i=>i.status==='PENDENTE').length} pendentes · {itens.filter(i=>i.status==='PRECISA_REVISAR').length} para revisar
+              </p>
+              {itens.map(item => (
+                <div className="checklist-item" key={item.id}>
+                  <div className="info">
+                    <h4>{item.procedimento.nome}</h4>
+                    <small><span className={`badge badge-${item.procedimento.tipo}`}>{item.procedimento.tipo}</span></small>
+                    {item.dataRealizacao && <small style={{display:'block', marginTop:'.25rem'}}>Realizado em: {item.dataRealizacao}</small>}
+                    {item.observacao && <small style={{display:'block', color:'#475569'}}>Obs: {item.observacao}</small>}
+                  </div>
+                  <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem'}}>
+                    <span className={`badge ${statusColor[item.status]}`}>{item.status}</span>
+                    {item.status !== 'REALIZADO' && <button className="btn btn-sm btn-success" onClick={() => acao(item.id, 'realizar')}>✓ Realizado</button>}
+                    {item.status !== 'PRECISA_REVISAR' && <button className="btn btn-sm btn-warning" onClick={() => acao(item.id, 'revisar')}>⚠ Revisar</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {itens?.length === 0 && <p className="loading">Nenhum item no checklist. Clique em "Gerar Checklist".</p>}
+        </div>
+      );
+    }
+
+    /* ---- APP ---- */
+    function App() {
+      const [tab, setTab] = React.useState('dashboard');
+      const tabs = [
+        { id:'dashboard', label:'Início' },
+        { id:'gestantes', label:'Gestantes' },
+        { id:'procedimentos', label:'Procedimentos' },
+        { id:'checklist', label:'Checklist' },
+      ];
+
+      const pages = { dashboard: <Dashboard />, gestantes: <GestantesPage />, procedimentos: <ProcedimentosPage />, checklist: <ChecklistPage /> };
+
+      return (
+        <div>
+          <header>
+            <div>
+              <h1>GestarAfeto</h1>
+              <p>Acompanhamento Organizacional do Pré-Natal</p>
+            </div>
+            <a href="/docs.html" className="docs-link" target="_blank">📄 Documentação</a>
+          </header>
+          <div className="aviso">
+            ⚠️ <strong>Aviso:</strong> O GestarAfeto é uma ferramenta de apoio organizacional e <strong>não substitui</strong> acompanhamento médico, protocolos oficiais ou avaliação profissional de saúde.
+          </div>
+          <nav>{tabs.map(t => <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</nav>
+          <main>{pages[tab]}</main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
