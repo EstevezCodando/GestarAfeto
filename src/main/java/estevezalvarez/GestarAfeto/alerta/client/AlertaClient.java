@@ -1,26 +1,25 @@
 package estevezalvarez.GestarAfeto.alerta.client;
 
 import estevezalvarez.GestarAfeto.alerta.client.dto.AlertaResponse;
-import estevezalvarez.GestarAfeto.alerta.client.dto.AvaliarChecklistRequest;
 import estevezalvarez.GestarAfeto.alerta.client.dto.ResumoAlertasResponse;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
 /**
  * Cliente declarativo (Spring Cloud OpenFeign) do microsservico de alertas.
  *
- * <p>A URL vem de {@code gestarafeto.alertas.url}, permitindo apontar para localhost em
- * desenvolvimento e para o nome do servico em um ambiente conteinerizado. Com
- * {@code spring.cloud.openfeign.circuitbreaker.enabled=true}, cada chamada passa por um
- * circuit breaker Resilience4j e cai em {@link AlertaClientFallbackFactory} quando o
- * microsservico esta indisponivel ou lento.</p>
+ * <p>Esta interface encolheu no TP4, e o que saiu dela e a evidencia da refatoracao. As
+ * operacoes de <b>escrita</b> que antes passavam por aqui ({@code avaliar} e
+ * {@code removerPorGestante}) viraram eventos publicados no RabbitMQ: o servico principal
+ * nao chama mais o microsservico para provocar trabalho, apenas anuncia o que aconteceu.</p>
+ *
+ * <p>Restaram as operacoes de <b>leitura</b> e as acoes sobre um alerta ja existente, que
+ * sao sincronas por natureza: a tela precisa da resposta imediata e o usuario precisa saber
+ * se a acao foi aceita. Essas continuam com circuit breaker e fallback.</p>
  */
 @FeignClient(
     name = "gestarafeto-alertas",
@@ -28,9 +27,6 @@ import java.util.List;
     fallbackFactory = AlertaClientFallbackFactory.class
 )
 public interface AlertaClient {
-
-    @PostMapping("/api/alertas/avaliacoes")
-    List<AlertaResponse> avaliar(@RequestBody AvaliarChecklistRequest request);
 
     @GetMapping("/api/alertas/gestante/{gestanteId}")
     List<AlertaResponse> listarPorGestante(@PathVariable("gestanteId") Long gestanteId);
@@ -43,7 +39,4 @@ public interface AlertaClient {
 
     @PatchMapping("/api/alertas/{id}/resolucao")
     AlertaResponse resolver(@PathVariable("id") Long id);
-
-    @DeleteMapping("/api/alertas/gestante/{gestanteId}")
-    void removerPorGestante(@PathVariable("gestanteId") Long gestanteId);
 }

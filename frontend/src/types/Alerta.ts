@@ -35,3 +35,13 @@ export interface ResumoAlertas {
   naoLidos: number
   resolvidos: number
 }
+
+/**
+ * Resposta do HTTP 202 da reavaliacao. O servico apenas publicou o evento: o
+ * calculo acontece depois, no microsservico.
+ */
+export interface SolicitacaoAceita {
+  gestanteId: number
+  status: string
+  mensagem: string
+}

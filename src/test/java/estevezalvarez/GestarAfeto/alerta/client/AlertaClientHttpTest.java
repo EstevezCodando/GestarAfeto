@@ -2,7 +2,6 @@ package estevezalvarez.GestarAfeto.alerta.client;
 
 import com.sun.net.httpserver.HttpServer;
 import estevezalvarez.GestarAfeto.alerta.client.dto.AlertaResponse;
-import estevezalvarez.GestarAfeto.alerta.client.dto.AvaliarChecklistRequest;
 import estevezalvarez.GestarAfeto.alerta.client.dto.ResumoAlertasResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -123,16 +122,6 @@ class AlertaClientHttpTest {
     }
 
     @Test
-    void avaliarTrafegaComoPostComCorpoJson() {
-        List<AlertaResponse> alertas = alertaClient.avaliar(
-            new AvaliarChecklistRequest(1L, "Maria Silva", null, null, List.of()));
-
-        assertEquals(1, alertas.size());
-        assertEquals("PROCEDIMENTO_ATRASADO", alertas.getFirst().tipo());
-        assertTrue(METODOS_RECEBIDOS.contains("POST /api/alertas/avaliacoes"));
-    }
-
-    @Test
     void listarEResumoTrafegamComoGet() {
         List<AlertaResponse> alertas = alertaClient.listarPorGestante(1L);
         ResumoAlertasResponse resumo = alertaClient.resumo(1L);
@@ -142,12 +131,5 @@ class AlertaClientHttpTest {
         assertEquals(2, resumo.alta());
         assertTrue(METODOS_RECEBIDOS.contains("GET /api/alertas/gestante/1"));
         assertTrue(METODOS_RECEBIDOS.contains("GET /api/alertas/gestante/1/resumo"));
-    }
-
-    @Test
-    void removerPorGestanteTrafegaComoDelete() {
-        alertaClient.removerPorGestante(1L);
-
-        assertTrue(METODOS_RECEBIDOS.contains("DELETE /api/alertas/gestante/1"));
     }
 }

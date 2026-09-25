@@ -80,6 +80,12 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
+		<!-- Spring AMQP: mensageria assincrona com RabbitMQ (TP4). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
 		<!-- Spring Cloud: comunicacao com o microsservico de alertas.
 		     OpenFeign expoe o cliente REST de forma declarativa e o CircuitBreaker
 		     (Resilience4j) garante que a indisponibilidade do microsservico degrade
@@ -154,6 +160,11 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

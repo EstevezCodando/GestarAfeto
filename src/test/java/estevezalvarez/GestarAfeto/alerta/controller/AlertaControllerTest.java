@@ -1,6 +1,7 @@
 package estevezalvarez.GestarAfeto.alerta.controller;
 
 import estevezalvarez.GestarAfeto.alerta.client.AlertaClient;
+import estevezalvarez.GestarAfeto.mensageria.EventoPublisher;
 import estevezalvarez.GestarAfeto.alerta.client.dto.AlertaResponse;
 import estevezalvarez.GestarAfeto.alerta.client.dto.ResumoAlertasResponse;
 import estevezalvarez.GestarAfeto.gestante.dto.CriarGestanteRequest;
@@ -22,6 +23,8 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -41,6 +44,9 @@ class AlertaControllerTest {
 
     @MockitoBean
     private AlertaClient alertaClient;
+
+    @MockitoBean
+    private EventoPublisher eventoPublisher;
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,15 +69,25 @@ class AlertaControllerTest {
     }
 
     @Test
-    void avaliarRetornaAlertasDoMicrosservico() throws Exception {
+    void avaliarResponde202EPublicaOEvento() throws Exception {
         GestanteResponse gestante = novaGestante();
-        when(alertaClient.avaliar(any())).thenReturn(List.of(alerta(1L, gestante.id())));
 
+        // 202, e nao 200: o servico apenas aceitou a solicitacao. O calculo acontece
+        // depois, no consumidor, fora desta requisicao.
         mockMvc.perform(post("/api/gestantes/{id}/alertas/avaliar", gestante.id()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].tipo").value("PROCEDIMENTO_ATRASADO"))
-            .andExpect(jsonPath("$[0].prioridade").value("ALTA"));
+            .andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.status").value("ACEITO"))
+            .andExpect(jsonPath("$.gestanteId").value(gestante.id()));
+
+        verify(eventoPublisher).publicarChecklistAlterado(any());
+    }
+
+    @Test
+    void avaliarGestanteInexistenteRetorna404SemPublicar() throws Exception {
+        mockMvc.perform(post("/api/gestantes/{id}/alertas/avaliar", 999999))
+            .andExpect(status().isNotFound());
+
+        verifyNoInteractions(eventoPublisher);
     }
 
     @Test

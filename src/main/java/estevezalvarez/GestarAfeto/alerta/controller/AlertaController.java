@@ -19,6 +19,10 @@ import java.util.List;
  * <p>O front-end fala apenas com esta API: o servico principal atua como fachada para o
  * microsservico. Isso mantem uma unica origem HTTP para o navegador, concentra o tratamento
  * de erro e permite validar a existencia da gestante antes de chamar o microsservico.</p>
+ *
+ * <p>As rotas se dividem em dois regimes. A reavaliacao e <b>assincrona</b>: publica um
+ * evento e responde 202. As consultas e as acoes sobre um alerta especifico continuam
+ * <b>sincronas</b>, porque a tela precisa do resultado imediato.</p>
  */
 @RestController
 @RequiredArgsConstructor
@@ -26,10 +30,18 @@ public class AlertaController {
 
     private final AlertaIntegracaoService alertaIntegracaoService;
 
-    /** Recalcula os alertas da gestante a partir do estado atual do checklist. */
+    /**
+     * Solicita a reavaliacao dos alertas da gestante.
+     *
+     * <p>Responde <b>202 Accepted</b>, e nao 200: o servico apenas publicou o evento. O
+     * calculo acontece no microsservico, de forma assincrona, e o resultado aparece na
+     * proxima consulta. Devolver 200 com a lista daria a entender que o processamento ja
+     * terminou.</p>
+     */
     @PostMapping("/api/gestantes/{gestanteId}/alertas/avaliar")
-    public ResponseEntity<List<AlertaResponse>> avaliar(@PathVariable Long gestanteId) {
-        return ResponseEntity.ok(alertaIntegracaoService.reavaliar(gestanteId));
+    public ResponseEntity<SolicitacaoAceitaResponse> avaliar(@PathVariable Long gestanteId) {
+        alertaIntegracaoService.solicitarReavaliacao(gestanteId);
+        return ResponseEntity.accepted().body(SolicitacaoAceitaResponse.reavaliacao(gestanteId));
     }
 
     @GetMapping("/api/gestantes/{gestanteId}/alertas")

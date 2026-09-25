@@ -8,6 +8,11 @@ principal exclusivamente por HTTP.
 - Porta padrao: `8081`
 - Banco: `gestarafeto_alertas` (PostgreSQL na porta `5433`)
 
+> **Atualizado no TP4.** A sincronizacao descrita neste documento como chamada REST sincrona
+> foi refatorada para mensageria assincrona com RabbitMQ. O microsservico agora **consome
+> eventos** em vez de receber chamadas HTTP de escrita; as consultas continuam REST. A
+> arquitetura de eventos esta em [`ARQUITETURA_EVENTOS.md`](ARQUITETURA_EVENTOS.md).
+
 ## Por que este recorte
 
 O calculo de alertas e o unico pedaco do sistema que satisfaz simultaneamente tres criterios

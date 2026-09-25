@@ -1,14 +1,10 @@
 package estevezalvarez.GestarAfeto.alerta.client;
 
-import estevezalvarez.GestarAfeto.alerta.client.dto.AvaliarChecklistRequest;
 import estevezalvarez.GestarAfeto.shared.exception.ServicoIndisponivelException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,10 +24,7 @@ class AlertaClientFallbackFactoryTest {
 
     @Test
     void leiturasDegradamParaRespostaVazia() {
-        assertAll(
-            () -> assertTrue(fallback.listarPorGestante(1L).isEmpty()),
-            () -> assertTrue(fallback.avaliar(
-                new AvaliarChecklistRequest(1L, "Maria", null, null, List.of())).isEmpty()));
+        assertTrue(fallback.listarPorGestante(1L).isEmpty());
     }
 
     @Test
@@ -48,10 +41,5 @@ class AlertaClientFallbackFactoryTest {
         assertAll(
             () -> assertThrows(ServicoIndisponivelException.class, () -> fallback.marcarLido(1L)),
             () -> assertThrows(ServicoIndisponivelException.class, () -> fallback.resolver(1L)));
-    }
-
-    @Test
-    void remocaoDeAlertasNaoBloqueiaARemocaoDaGestante() {
-        assertDoesNotThrow(() -> fallback.removerPorGestante(1L));
     }
 }

@@ -1,12 +1,13 @@
 package estevezalvarez.GestarAfeto.alerta.service;
 
-import estevezalvarez.GestarAfeto.alerta.client.AlertaClient;
-import estevezalvarez.GestarAfeto.alerta.client.dto.AvaliarChecklistRequest;
-import estevezalvarez.GestarAfeto.alerta.client.dto.ItemChecklistSnapshot;
 import estevezalvarez.GestarAfeto.checklist.service.ChecklistService;
 import estevezalvarez.GestarAfeto.gestante.dto.CriarGestanteRequest;
 import estevezalvarez.GestarAfeto.gestante.dto.GestanteResponse;
 import estevezalvarez.GestarAfeto.gestante.service.GestanteService;
+import estevezalvarez.GestarAfeto.mensageria.EventoPublisher;
+import estevezalvarez.GestarAfeto.mensageria.evento.ChecklistAlteradoMessage;
+import estevezalvarez.GestarAfeto.mensageria.evento.GestanteRemovidaMessage;
+import estevezalvarez.GestarAfeto.mensageria.evento.ItemChecklistEvento;
 import estevezalvarez.GestarAfeto.procedimento.domain.TipoProcedimento;
 import estevezalvarez.GestarAfeto.procedimento.dto.CriarProcedimentoRequest;
 import estevezalvarez.GestarAfeto.procedimento.service.ProcedimentoService;
@@ -16,24 +17,24 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.jdbc.Sql;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * Verifica a traducao do dominio do servico principal para o contrato do microsservico.
- * O {@link AlertaClient} e substituido por um mock: o objetivo aqui e o snapshot enviado,
- * nao o comportamento remoto.
+ * Verifica a montagem da mensagem publicada no RabbitMQ a partir do dominio local.
+ *
+ * <p>O {@link EventoPublisher} e substituido por um mock: o objetivo aqui e o conteudo do
+ * evento, nao o transporte. A entrega real ao broker e coberta pelo teste com Testcontainers
+ * no microsservico.</p>
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -41,7 +42,7 @@ import static org.mockito.Mockito.when;
 class AlertaIntegracaoServiceTest {
 
     @MockitoBean
-    private AlertaClient alertaClient;
+    private EventoPublisher eventoPublisher;
 
     @Autowired
     private AlertaIntegracaoService alertaIntegracaoService;
@@ -79,23 +80,24 @@ class AlertaIntegracaoServiceTest {
     }
 
     @Test
-    void enviaSnapshotDoChecklistComDadosDaGestanteEDoProcedimento() {
+    void publicaEventoComOEstadoCompletoDoChecklist() {
         GestanteResponse gestante = gestanteComChecklist();
-        when(alertaClient.avaliar(any())).thenReturn(List.of());
 
-        alertaIntegracaoService.reavaliar(gestante.id());
+        alertaIntegracaoService.solicitarReavaliacao(gestante.id());
 
-        ArgumentCaptor<AvaliarChecklistRequest> captor =
-            ArgumentCaptor.forClass(AvaliarChecklistRequest.class);
-        verify(alertaClient).avaliar(captor.capture());
+        ArgumentCaptor<ChecklistAlteradoMessage> captor =
+            ArgumentCaptor.forClass(ChecklistAlteradoMessage.class);
+        verify(eventoPublisher).publicarChecklistAlterado(captor.capture());
 
-        AvaliarChecklistRequest enviado = captor.getValue();
+        ChecklistAlteradoMessage enviado = captor.getValue();
         assertEquals(gestante.id(), enviado.gestanteId());
         assertEquals("Maria Silva", enviado.gestanteNome());
         assertEquals(gestante.dataUltimaMenstruacao(), enviado.dataUltimaMenstruacao());
         assertTrue(enviado.itens().size() >= 1);
 
-        ItemChecklistSnapshot item = enviado.itens().stream()
+        // O consumidor precisa conseguir processar sem chamar de volta: as janelas
+        // recomendadas do procedimento viajam junto com o item.
+        ItemChecklistEvento item = enviado.itens().stream()
             .filter(i -> "Hemograma Completo".equals(i.procedimentoNome()))
             .findFirst()
             .orElseThrow();
@@ -108,19 +110,40 @@ class AlertaIntegracaoServiceTest {
     }
 
     @Test
-    void reavaliarGestanteInexistenteFalhaAntesDeChamarOMicrosservico() {
-        assertThrows(RecursoNaoEncontradoException.class,
-            () -> alertaIntegracaoService.reavaliar(999999L));
+    void mensagemCarregaEnvelopeDeRastreamento() {
+        GestanteResponse gestante = gestanteComChecklist();
+
+        alertaIntegracaoService.solicitarReavaliacao(gestante.id());
+
+        ArgumentCaptor<ChecklistAlteradoMessage> captor =
+            ArgumentCaptor.forClass(ChecklistAlteradoMessage.class);
+        verify(eventoPublisher).publicarChecklistAlterado(captor.capture());
+
+        ChecklistAlteradoMessage enviado = captor.getValue();
+        assertNotNull(enviado.eventoId(), "eventoId e a chave para rastrear a mensagem nos dois lados");
+        assertEquals(ChecklistAlteradoMessage.TIPO, enviado.tipo());
+        assertEquals(ChecklistAlteradoMessage.VERSAO_ATUAL, enviado.versao());
+        assertEquals("gestarafeto-principal", enviado.origem());
+        assertNotNull(enviado.ocorridoEm());
     }
 
     @Test
-    void reavaliarSemPropagarErroEngoleFalhaDoMicrosservico() {
-        GestanteResponse gestante = gestanteComChecklist();
-        when(alertaClient.avaliar(any())).thenThrow(new IllegalStateException("servico fora do ar"));
+    void publicaEventoDeRemocaoComOIdentificadorDaGestante() {
+        alertaIntegracaoService.solicitarRemocaoDosAlertas(77L);
 
-        // Nao deve lancar: o gatilho automatico jamais pode quebrar a operacao de checklist.
-        alertaIntegracaoService.reavaliarSemPropagarErro(gestante.id());
+        ArgumentCaptor<GestanteRemovidaMessage> captor =
+            ArgumentCaptor.forClass(GestanteRemovidaMessage.class);
+        verify(eventoPublisher).publicarGestanteRemovida(captor.capture());
 
-        verify(alertaClient).avaliar(any());
+        assertEquals(77L, captor.getValue().gestanteId());
+        assertEquals(GestanteRemovidaMessage.TIPO, captor.getValue().tipo());
+    }
+
+    @Test
+    void gestanteInexistenteFalhaAntesDePublicarQualquerEvento() {
+        assertThrows(RecursoNaoEncontradoException.class,
+            () -> alertaIntegracaoService.solicitarReavaliacao(999999L));
+
+        verifyNoInteractions(eventoPublisher);
     }
 }

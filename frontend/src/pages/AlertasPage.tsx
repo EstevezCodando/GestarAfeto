@@ -34,16 +34,33 @@ export default function AlertasPage() {
     }
   }
 
+  /**
+   * A reavaliação é assíncrona: o serviço apenas publica o evento e responde 202.
+   * O cálculo acontece no microsserviço, então a tela precisa buscar o resultado
+   * depois, em vez de recebê-lo nesta chamada. Aqui a página recarrega algumas vezes
+   * em curto intervalo até a lista mudar — é a consistência eventual aparecendo na
+   * interface, e não um defeito.
+   */
   const avaliar = async () => {
     if (!gestanteId) return
     setLoading(true); setError(null); setMsg(null)
     try {
-      const lista = await alertaService.avaliar(gestanteId)
-      setAlertas(lista)
-      setResumo(await alertaService.resumo(gestanteId))
-      setMsg(lista.length === 0
-        ? 'Nenhum alerta pendente para esta gestante.'
-        : `${lista.length} alerta(s) ativos após a reavaliação.`)
+      const aceite = await alertaService.avaliar(gestanteId)
+      setMsg(aceite.mensagem)
+
+      const antes = JSON.stringify(await alertaService.resumo(gestanteId))
+      for (let tentativa = 0; tentativa < 6; tentativa++) {
+        await new Promise(r => setTimeout(r, 500))
+        const [lista, agregado] = await Promise.all([
+          alertaService.listar(gestanteId),
+          alertaService.resumo(gestanteId),
+        ])
+        setAlertas(lista); setResumo(agregado)
+        if (JSON.stringify(agregado) !== antes) {
+          setMsg(`Alertas atualizados: ${agregado.totalAtivos} ativo(s).`)
+          break
+        }
+      }
     } catch (e: any) {
       setError(e.message)
     } finally {

@@ -1,7 +1,6 @@
 package estevezalvarez.GestarAfeto.alerta.client;
 
 import estevezalvarez.GestarAfeto.alerta.client.dto.AlertaResponse;
-import estevezalvarez.GestarAfeto.alerta.client.dto.AvaliarChecklistRequest;
 import estevezalvarez.GestarAfeto.alerta.client.dto.ResumoAlertasResponse;
 import estevezalvarez.GestarAfeto.shared.exception.ServicoIndisponivelException;
 import org.slf4j.Logger;
@@ -16,12 +15,17 @@ import java.util.List;
  *
  * <p>A degradacao e deliberadamente assimetrica:</p>
  * <ul>
- *   <li><b>Leituras e reavaliacoes</b> devolvem vazio. O acompanhamento pre-natal continua
- *       funcionando sem o painel de alertas, que e um recurso complementar.</li>
+ *   <li><b>Leituras</b> devolvem vazio. O acompanhamento pre-natal continua funcionando sem
+ *       o painel de alertas, que e um recurso complementar.</li>
  *   <li><b>Acoes explicitas da usuaria</b> (marcar como lido, resolver) falham com 503.
  *       Fingir sucesso faria a interface mostrar um estado que o microsservico nunca
  *       registrou.</li>
  * </ul>
+ *
+ * <p>Depois do TP4 este fallback cobre uma superficie menor, e de proposito. A reavaliacao e
+ * a remocao nao passam mais por aqui: como sao publicadas no RabbitMQ, a indisponibilidade
+ * do consumidor nao interrompe nada — as mensagens ficam enfileiradas ate ele voltar. O
+ * circuit breaker protege apenas o que ainda e sincrono.</p>
  */
 @Component
 public class AlertaClientFallbackFactory implements FallbackFactory<AlertaClient> {
@@ -34,11 +38,6 @@ public class AlertaClientFallbackFactory implements FallbackFactory<AlertaClient
             cause == null ? "desconhecida" : cause.toString());
 
         return new AlertaClient() {
-
-            @Override
-            public List<AlertaResponse> avaliar(AvaliarChecklistRequest request) {
-                return List.of();
-            }
 
             @Override
             public List<AlertaResponse> listarPorGestante(Long gestanteId) {
@@ -58,14 +57,6 @@ public class AlertaClientFallbackFactory implements FallbackFactory<AlertaClient
             @Override
             public AlertaResponse resolver(Long id) {
                 throw indisponivel();
-            }
-
-            @Override
-            public void removerPorGestante(Long gestanteId) {
-                // A remocao da gestante nao pode ser bloqueada por um servico auxiliar.
-                // Os alertas orfaos sao descartados na proxima reavaliacao daquele id.
-                log.warn("Nao foi possivel remover alertas da gestante {}: microsservico indisponivel.",
-                    gestanteId);
             }
 
             private ServicoIndisponivelException indisponivel() {

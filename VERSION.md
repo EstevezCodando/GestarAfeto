@@ -1,5 +1,37 @@
 # GestarAfeto - Controle de Versao
 
+## v4.0.0 - TP4/PB - Arquitetura orientada a eventos
+
+### Implementado
+
+- RabbitMQ 3.13 como broker de mensagens, subindo junto no `compose.yaml` com painel em `:15672`.
+- Integracao via Spring AMQP 4 (`spring-boot-starter-amqp`) nos dois servicos.
+- Exchange topic `gestarafeto.eventos` e exchange de dead letter `gestarafeto.eventos.dlx`.
+- Routing keys `checklist.alterado` e `gestante.removida`.
+- Filas duraveis `alertas.checklist-alterado` e `alertas.gestante-removida`, uma por evento,
+  cada uma com a propria DLQ. Topologia declarada em codigo e criada na subida.
+- Mensagens em JSON com envelope de rastreamento: `eventoId`, `tipo`, `versao`, `ocorridoEm`
+  e `origem`. O evento de checklist carrega o estado completo, de modo que o consumidor
+  processa sem nenhuma chamada de volta ao produtor.
+- `EventoPublisher` no servico principal, com publisher confirms, returns e repeticao.
+- `ChecklistAlteradoConsumer` e `GestanteRemovidaConsumer` com `@RabbitListener`, repeticao
+  com espera crescente e rejeicao direta para DLQ em payload invalido.
+- Refatoracao do acoplamento: `avaliar` e `removerPorGestante` sairam do cliente Feign e
+  viraram eventos. `POST /api/gestantes/{id}/alertas/avaliar` passou a responder **202**.
+- Leituras (listar, resumo, marcar lido, resolver) permanecem sincronas por decisao de projeto.
+- Front-end ajustado para o 202, com atualizacao posterior refletindo a consistencia eventual.
+- 89 testes no total, incluindo um ponta a ponta com RabbitMQ real via Testcontainers.
+- Documentacao: `docs/ARQUITETURA_EVENTOS.md` e atualizacoes em README, TESTING e API_EXAMPLES.
+
+### Observacoes
+
+- Consistencia eventual assumida: os alertas podem ficar defasados por instantes apos uma
+  alteracao, o que e aceitavel porque nenhuma decisao clinica depende disso em tempo real.
+- Permanece uma janela de perda: se o broker estiver fora do ar no instante exato da
+  publicacao, a mensagem se perde. O estado se recompoe na alteracao seguinte, porque o
+  consumo e idempotente. Um outbox transacional eliminaria a janela e fica como evolucao.
+- Entrega ao menos uma vez: o consumo foi desenhado para ser idempotente.
+
 ## v3.0.0 - TP3/PB - Microsservico de alertas
 
 ### Implementado

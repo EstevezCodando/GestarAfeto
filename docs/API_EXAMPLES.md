@@ -64,34 +64,24 @@ As rotas abaixo sao expostas pelo servico principal (porta 8080), que encaminha 
 microsservico de alertas. Ver [`MICROSSERVICO_ALERTAS.md`](MICROSSERVICO_ALERTAS.md) para a
 API direta do microsservico (porta 8081).
 
-### Reavaliar alertas de uma gestante
+### Reavaliar alertas de uma gestante (assincrono)
 
 ```http
 POST /api/gestantes/1/alertas/avaliar
 ```
 
-Resposta:
+Responde **202 Accepted**: o servico publicou o evento `checklist.alterado` no RabbitMQ e
+retornou. O calculo acontece no microsservico, de forma assincrona.
 
 ```json
-[
-  {
-    "id": 12,
-    "gestanteId": 1,
-    "gestanteNome": "Maria Silva",
-    "origemId": 34,
-    "tipo": "PROCEDIMENTO_ATRASADO",
-    "prioridade": "ALTA",
-    "status": "ABERTO",
-    "titulo": "Atrasado: Ultrassonografia Morfologica",
-    "mensagem": "A janela recomendada terminou na semana 24 e a gestacao esta na semana 30 (6 semana(s) de atraso).",
-    "dataReferencia": "2026-06-10",
-    "semanaGestacionalReferencia": 24,
-    "dataCriacao": "2026-08-19T21:15:03",
-    "dataLeitura": null,
-    "dataResolucao": null
-  }
-]
+{
+  "gestanteId": 1,
+  "status": "ACEITO",
+  "mensagem": "Reavaliacao solicitada. Os alertas serao atualizados em instantes."
+}
 ```
+
+A lista atualizada vem de uma consulta posterior, nao desta chamada.
 
 ### Listar alertas ativos
 

@@ -36,6 +36,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Broker de mensagens do TP4. A imagem "-management" traz o painel web em :15672,
+  # usado na demonstracao para ver exchange, filas, bindings e as mensagens passando.
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: gestarafeto-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-gestarafeto}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-gestarafeto}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - gestarafeto_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   gestarafeto_postgres_data:
   gestarafeto_alertas_postgres_data:
+  gestarafeto_rabbitmq_data:

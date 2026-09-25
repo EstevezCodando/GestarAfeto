@@ -12,18 +12,24 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Mantem os alertas sincronizados automaticamente com o servico principal.
+ * Converte eventos de dominio internos em mensagens publicadas no RabbitMQ.
  *
- * <p>Roda em {@link TransactionPhase#AFTER_COMMIT}: o microsservico so e chamado depois que a
- * alteracao esta efetivamente gravada, evitando avaliar um estado que a transacao ainda
- * poderia desfazer. As chamadas tambem nao propagam erro, entao o microsservico fora do ar
- * nunca transforma uma operacao concluida com sucesso em erro para a usuaria.</p>
+ * <p>Fica na fronteira entre dois mundos. Para dentro, escuta os eventos que
+ * {@code ChecklistService} e {@code GestanteService} publicam no contexto do Spring, sem que
+ * esses servicos saibam que existe mensageria. Para fora, traduz o fato em uma mensagem e a
+ * entrega ao broker.</p>
  *
- * <p>Este listener e o unico ponto de acoplamento entre os dominios de checklist/gestante e o
- * de alertas: os publicadores conhecem apenas o evento em {@code shared.event}.</p>
+ * <p>Roda em {@link TransactionPhase#AFTER_COMMIT}, e isso importa: so e publicado o que
+ * realmente foi gravado. Publicar antes do commit poderia anunciar uma alteracao que a
+ * transacao ainda desfaria, e o consumidor processaria um estado que nunca existiu.</p>
+ *
+ * <p>Comparado ao TP3, o que mudou aqui e a natureza da chamada. Antes este ponto fazia uma
+ * requisicao HTTP e ficava bloqueado esperando o microsservico responder; agora entrega a
+ * mensagem ao broker e retorna. O produtor deixou de depender da execucao imediata do
+ * consumidor para concluir sua propria operacao.</p>
  *
  * <p>Pode ser desligado com {@code gestarafeto.alertas.integracao-automatica=false}, util em
- * testes e em ambientes onde o microsservico nao esta implantado.</p>
+ * testes e em ambientes sem broker.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -39,15 +45,23 @@ public class ChecklistAlteradoListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoAlterarChecklist(ChecklistAlteradoEvent evento) {
-        alertaIntegracaoService.reavaliarSemPropagarErro(evento.gestanteId());
+        try {
+            alertaIntegracaoService.solicitarReavaliacao(evento.gestanteId());
+        } catch (RuntimeException ex) {
+            // Publicar e um efeito colateral da operacao que ja foi concluida com sucesso.
+            // Falhar aqui nao pode invalidar o que o usuario acabou de salvar.
+            log.warn("Nao foi possivel anunciar a alteracao do checklist da gestante {}: {}",
+                evento.gestanteId(), ex.getMessage());
+        }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void aoRemoverGestante(GestanteRemovidaEvent evento) {
         try {
-            alertaIntegracaoService.removerPorGestante(evento.gestanteId());
+            alertaIntegracaoService.solicitarRemocaoDosAlertas(evento.gestanteId());
         } catch (RuntimeException ex) {
-            log.warn("Falha ao remover alertas da gestante {}: {}", evento.gestanteId(), ex.getMessage());
+            log.warn("Nao foi possivel anunciar a remocao da gestante {}: {}",
+                evento.gestanteId(), ex.getMessage());
         }
     }
 }
