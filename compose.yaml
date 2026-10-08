@@ -71,6 +71,10 @@ services:
       GESTARAFETO_RABBIT_HOST: rabbitmq
       GESTARAFETO_RABBIT_USER: ${RABBITMQ_USER:-gestarafeto}
       GESTARAFETO_RABBIT_PASSWORD: ${RABBITMQ_PASSWORD:-gestarafeto}
+      OTEL_EXPORT_ENABLED: ${OTEL_EXPORT_ENABLED:-true}
+      OTEL_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_LOGS_ENDPOINT: http://loki:3100/otlp/v1/logs
+      GESTARAFETO_AMBIENTE: compose
     ports:
       - "8080:8080"
     depends_on:
@@ -94,6 +98,10 @@ services:
       GESTARAFETO_RABBIT_HOST: rabbitmq
       GESTARAFETO_RABBIT_USER: ${RABBITMQ_USER:-gestarafeto}
       GESTARAFETO_RABBIT_PASSWORD: ${RABBITMQ_PASSWORD:-gestarafeto}
+      OTEL_EXPORT_ENABLED: ${OTEL_EXPORT_ENABLED:-true}
+      OTEL_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_LOGS_ENDPOINT: http://loki:3100/otlp/v1/logs
+      GESTARAFETO_AMBIENTE: compose
     ports:
       - "8081:8081"
     depends_on:
@@ -115,7 +123,51 @@ services:
       - gestarafeto-app
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Observabilidade (R3). Fazem parte do profile "app" e podem subir sozinhos
+  # com `docker compose --profile obs up -d`.
+  #   Jaeger  http://localhost:16686  traces
+  #   Grafana http://localhost:3001   logs (Loki) + traces (Jaeger), login admin/admin
+  # ---------------------------------------------------------------------------
+  jaeger:
+    profiles: ["app", "obs"]
+    image: jaegertracing/jaeger:2.11.0
+    ports:
+      - "16686:16686"   # UI
+      - "4318:4318"     # OTLP/HTTP (usado pelos servicos)
+    restart: unless-stopped
+
+  loki:
+    profiles: ["app", "obs"]
+    image: grafana/loki:3.5.5
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - gestarafeto_loki_data:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+  grafana:
+    profiles: ["app", "obs"]
+    image: grafana/grafana:12.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - loki
+      - jaeger
+    restart: unless-stopped
+
 volumes:
+  gestarafeto_loki_data:
   gestarafeto_postgres_data:
   gestarafeto_alertas_postgres_data:
   gestarafeto_rabbitmq_data:

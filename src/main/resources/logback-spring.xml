@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Console legivel (com [servico,traceId,spanId]) + envio dos mesmos registros ao coletor via OTLP.
+  O appender OTLP so transmite quando management.logging.export.otlp.enabled=true; antes disso
+  (e nos testes) ele apenas acumula um buffer pequeno em memoria.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureLoggerContext>false</captureLoggerContext>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OTEL"/>
+    </root>
+</configuration>

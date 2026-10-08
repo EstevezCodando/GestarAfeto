@@ -16,9 +16,10 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<otel-logback-appender.version>2.21.0-alpha</otel-logback-appender.version>
 		<lombok.version>1.18.46</lombok.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
-		<testcontainers.version>1.21.3</testcontainers.version>
+		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 
 	<dependencyManagement>
@@ -73,6 +74,18 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-config</artifactId>
+		</dependency>
+
+		<!-- Observabilidade: OpenTelemetry (traces, metricas e logs via OTLP). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<!-- Envia os logs do Logback ao coletor via OTLP, ja com traceId/spanId anexados. -->
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-appender-1.0</artifactId>
+			<version>${otel-logback-appender.version}</version>
 		</dependency>
 
 		<dependency>

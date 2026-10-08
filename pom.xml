@@ -28,8 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<otel-logback-appender.version>2.21.0-alpha</otel-logback-appender.version>
 		<lombok.version>1.18.46</lombok.version>
-		<testcontainers.version>1.21.3</testcontainers.version>
+		<testcontainers.version>1.21.4</testcontainers.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
 	<dependencyManagement>
@@ -104,6 +105,24 @@
 		<dependency>
 			<groupId>io.github.openfeign</groupId>
 			<artifactId>feign-hc5</artifactId>
+		</dependency>
+
+		<!-- Observabilidade: OpenTelemetry (traces, metricas e logs via OTLP). O starter do Spring Boot
+		     traz o Micrometer Tracing com a ponte OTel e os exportadores OTLP. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<!-- Envia os logs do Logback ao coletor via OTLP, ja com traceId/spanId anexados. -->
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-appender-1.0</artifactId>
+			<version>${otel-logback-appender.version}</version>
+		</dependency>
+		<!-- Propaga o contexto de trace nas chamadas do cliente Feign (servico principal -> alertas). -->
+		<dependency>
+			<groupId>io.github.openfeign</groupId>
+			<artifactId>feign-micrometer</artifactId>
 		</dependency>
 
 		<dependency>
