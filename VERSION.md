@@ -1,5 +1,24 @@
 # GestarAfeto - Controle de Versao
 
+## v5.0.0 - Producao simulada (Docker, Kubernetes, observabilidade, CI/CD)
+
+### Implementado
+
+- Conteinerizacao dos tres componentes (servico principal, alertas, front-end) com builds
+  multi-etapa, usuario nao root e health checks; `compose.yaml` com profile `app`.
+- Manifests Kubernetes (Kustomize) em dois namespaces: StatefulSets com PVC, Deployments com
+  probes e limites, HPA, PodDisruptionBudgets, NetworkPolicies e seguranca restrita.
+- OpenTelemetry nos dois servicos: traces para Jaeger e logs para Loki (OTLP), consultados no
+  Grafana; `X-Trace-Id` em toda resposta; o trace atravessa HTTP, Feign e RabbitMQ.
+- Workflows de CI e CD no GitHub Actions; analise estatica (Checkstyle) e cobertura (JaCoCo).
+- 146 testes (72 + 74), sem testes ignorados.
+
+### Observacoes
+
+- Os workflows foram validados estaticamente e seus comandos executados localmente; a execucao
+  no GitHub depende de enviar a branch (ver `docs/CICD.md`).
+- Detalhes, evidencias, defeitos corrigidos e limitacoes: `docs/RASTREABILIDADE.md`.
+
 ## v4.0.0 - TP4/PB - Arquitetura orientada a eventos
 
 ### Implementado

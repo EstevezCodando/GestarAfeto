@@ -10,8 +10,52 @@ O sistema e composto por dois servicos autonomos e um broker de mensagens:
 | `gestarafeto-alertas` | 8081 | `gestarafeto_alertas` | Priorizacao do checklist em alertas acionaveis |
 | `rabbitmq` | 5672 / 15672 | — | Transporte dos eventos entre os dois servicos |
 
+## Producao simulada: Docker, Kubernetes, observabilidade e CI/CD (v5.0.0)
+
+Na entrega de producao, o sistema passou a rodar conteinerizado e orquestrado, com logs e traces centralizados e pipelines automatizados. Guia completo em [`docs/PRODUCAO.md`](docs/PRODUCAO.md).
+
+```mermaid
+flowchart LR
+    FE["frontend (Nginx)"] --> APP["servico principal"]
+    APP -->|HTTP + circuit breaker| AL["alertas"]
+    APP -->|eventos| MQ[("RabbitMQ")] --> AL
+    APP -. OTLP .-> OBS["Jaeger + Loki + Grafana"]
+    AL -. OTLP .-> OBS
+```
+
+**Subir tudo em Docker Compose** (sem Kubernetes):
+
+```bash
+docker compose --profile app up -d --build
+bash scripts/smoke.sh     # cria gestante -> checklist -> evento no RabbitMQ -> alertas calculados
+```
+
+Aplicacao em http://localhost:3080 · Jaeger http://localhost:16686 · Grafana http://localhost:3001 (`admin`/`admin`).
+
+**Subir no Kubernetes** (Kubernetes do Docker Desktop ou kind; precisa de `kubectl` e metrics-server):
+
+```bash
+bash scripts/k8s-build-load.sh   # constroi as imagens e as importa no no do cluster
+bash scripts/k8s-up.sh           # namespaces, segredos, manifests, observabilidade; aguarda os rollouts
+kubectl --context docker-desktop -n gestarafeto-prod get pods,hpa
+```
+
+**Remover:** `bash scripts/k8s-down.sh` (preserva dados) ou `bash scripts/k8s-down.sh --tudo`.
+
+| Tema | Documento |
+|---|---|
+| Arquitetura final, Docker, Kubernetes, escala, problemas comuns | [`docs/PRODUCAO.md`](docs/PRODUCAO.md) |
+| Logs (Loki), traces (Jaeger), correlacao, consultas | [`docs/OBSERVABILIDADE.md`](docs/OBSERVABILIDADE.md) |
+| Pipelines de CI e CD | [`docs/CICD.md`](docs/CICD.md) |
+| Roteiro de apresentacao com comandos e resultados esperados | [`docs/DEMONSTRACAO_PRODUCAO.md`](docs/DEMONSTRACAO_PRODUCAO.md) |
+| Matriz de requisitos, evidencias, defeitos corrigidos, pendencias | [`docs/RASTREABILIDADE.md`](docs/RASTREABILIDADE.md) |
+| Historico de mudancas | [`CHANGELOG.md`](CHANGELOG.md) |
+
+> **Pendencia declarada:** os workflows do GitHub Actions foram validados estaticamente e seus comandos executados localmente, mas ainda nao rodaram no GitHub. Ver [`docs/CICD.md`](docs/CICD.md#4-como-validar-de-fato-passo-que-falta).
+
 ## Indice rapido
 
+- [Producao: Docker, Kubernetes, observabilidade, CI/CD](docs/PRODUCAO.md) — v5.0.0
 - [Arquitetura orientada a eventos](docs/ARQUITETURA_EVENTOS.md) — documento principal do TP4
 - [Microsservico de alertas](docs/MICROSSERVICO_ALERTAS.md)
 - [Arquitetura e diagramas](docs/ARCHITECTURE.md)
@@ -47,6 +91,8 @@ Ha tambem uma versao interativa em `src/main/resources/static/docs.html`, servid
 Java 21, Spring Boot 4, Spring Web MVC, Spring Data JPA, Hibernate, Hibernate Envers, Flyway, PostgreSQL, H2 para testes rapidos, Testcontainers, Maven, React, Vite e TypeScript.
 
 Na camada distribuida: **Spring Cloud 2025.1.2** — OpenFeign (cliente REST declarativo), CircuitBreaker com Resilience4j (resiliencia) e spring-cloud-context/config (configuracao distribuida e recarregavel).
+
+Em producao: **Docker** (multi-etapa), **Kubernetes** com Kustomize (HPA, StatefulSets, NetworkPolicy), **OpenTelemetry**, **Jaeger**, **Grafana Loki**, **Grafana** e **GitHub Actions**.
 
 Na mensageria: **RabbitMQ 3.13** com **Spring AMQP 4** (`spring-boot-starter-amqp`) — exchange topic, filas duraveis, bindings por routing key, dead letter queues, publisher confirms e repeticao com espera crescente.
 
@@ -100,7 +146,7 @@ cd alertas-service
 .\mvnw.cmd test
 ```
 
-Sao 31 testes no servico principal e 58 no microsservico (89 no total). A suite cobre repositories, integridade, ordenacao, auditoria, regras de alerta, publicacao e consumo de eventos, e a integracao entre os servicos.
+Sao 72 testes no servico principal e 74 no microsservico (**146 no total**, nenhum ignorado com Docker disponivel). A suite cobre repositories, integridade, ordenacao, auditoria, regras de alerta, publicacao e consumo de eventos, a integracao entre os servicos, tratamento de erros HTTP, sondas de saude, configuracao de producao, o fluxo completo da API e a politica dos manifests Kubernetes. Use `mvnw verify` para rodar tambem a cobertura (JaCoCo) e a analise estatica (Checkstyle). Detalhes em [`docs/TESTING.md`](docs/TESTING.md).
 
 Duas classes de teste usam **Testcontainers** e sao ignoradas automaticamente quando nao ha Docker disponivel:
 
