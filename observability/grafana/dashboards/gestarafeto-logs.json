@@ -38,7 +38,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (service_name) (count_over_time({service_name=~\"$service\"} | detected_level=\"error\" [1m]))", "legendFormat": "{{service_name}}" }
+        { "refId": "A", "expr": "sum by (service_name) (count_over_time({service_name=~\"$service\"} | severity_text=\"ERROR\" [1m]))", "legendFormat": "{{service_name}}" }
       ]
     },
     {
@@ -46,7 +46,7 @@
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 7 },
       "datasource": { "type": "loki", "uid": "loki" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
-      "targets": [ { "refId": "A", "expr": "{service_name=~\"$service\"} | detected_level=\"error\"" } ]
+      "targets": [ { "refId": "A", "expr": "{service_name=~\"$service\"} | severity_text=\"ERROR\"" } ]
     },
     {
       "id": 4, "type": "logs", "title": "Todos os logs",
