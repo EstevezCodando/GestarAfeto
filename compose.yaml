@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: gestarafeto-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gestarafeto}
       POSTGRES_USER: ${POSTGRES_USER:-gestarafeto}
@@ -21,7 +20,6 @@ services:
   # as tabelas do outro, o que forca a integracao a acontecer pela API REST.
   postgres-alertas:
     image: postgres:16-alpine
-    container_name: gestarafeto-postgres-alertas
     environment:
       POSTGRES_DB: ${POSTGRES_ALERTAS_DB:-gestarafeto_alertas}
       POSTGRES_USER: ${POSTGRES_ALERTAS_USER:-gestarafeto}
@@ -40,7 +38,6 @@ services:
   # usado na demonstracao para ver exchange, filas, bindings e as mensagens passando.
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
-    container_name: gestarafeto-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-gestarafeto}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-gestarafeto}
@@ -54,6 +51,69 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Aplicacao (profile "app"): `docker compose --profile app up -d --build`.
+  # Sem o profile, o compose sobe so a infraestrutura, como no fluxo de desenvolvimento.
+  # ---------------------------------------------------------------------------
+  gestarafeto-app:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gestarafeto/app:${GESTARAFETO_VERSION:-dev}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      GESTARAFETO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gestarafeto}
+      GESTARAFETO_DB_USER: ${POSTGRES_USER:-gestarafeto}
+      GESTARAFETO_DB_PASSWORD: ${POSTGRES_PASSWORD:-gestarafeto}
+      GESTARAFETO_ALERTAS_URL: http://gestarafeto-alertas:8081
+      GESTARAFETO_RABBIT_HOST: rabbitmq
+      GESTARAFETO_RABBIT_USER: ${RABBITMQ_USER:-gestarafeto}
+      GESTARAFETO_RABBIT_PASSWORD: ${RABBITMQ_PASSWORD:-gestarafeto}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gestarafeto-alertas:
+    profiles: ["app"]
+    build:
+      context: ./alertas-service
+      dockerfile: Dockerfile
+    image: gestarafeto/alertas:${GESTARAFETO_VERSION:-dev}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      GESTARAFETO_ALERTAS_DB_URL: jdbc:postgresql://postgres-alertas:5432/${POSTGRES_ALERTAS_DB:-gestarafeto_alertas}
+      GESTARAFETO_ALERTAS_DB_USER: ${POSTGRES_ALERTAS_USER:-gestarafeto}
+      GESTARAFETO_ALERTAS_DB_PASSWORD: ${POSTGRES_ALERTAS_PASSWORD:-gestarafeto}
+      GESTARAFETO_RABBIT_HOST: rabbitmq
+      GESTARAFETO_RABBIT_USER: ${RABBITMQ_USER:-gestarafeto}
+      GESTARAFETO_RABBIT_PASSWORD: ${RABBITMQ_PASSWORD:-gestarafeto}
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-alertas:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: gestarafeto/frontend:${GESTARAFETO_VERSION:-dev}
+    ports:
+      - "${GESTARAFETO_FRONTEND_PORT:-3080}:8080"
+    depends_on:
+      - gestarafeto-app
+    restart: unless-stopped
 
 volumes:
   gestarafeto_postgres_data:
