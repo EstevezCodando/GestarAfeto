@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gestarafeto-prod
+  labels:
+    app.kubernetes.io/part-of: gestarafeto
+    # Pod Security Standards: o namespace rejeita pods que violem o perfil "baseline"
+    # e avisa sobre os que violem "restricted" (todos os nossos pods ja cumprem restricted).
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted

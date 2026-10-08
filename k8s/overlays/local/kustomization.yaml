@@ -1,0 +1,15 @@
+# Ambiente simulado de producao: Kubernetes local (Docker Desktop ou kind).
+# As imagens sao as construidas localmente (docker build), por isso imagePullPolicy IfNotPresent.
+# O CD substitui o nome/tag das imagens por `kustomize edit set image` (ver .github/workflows/cd.yml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - ../../../observability
+images:
+  - name: gestarafeto/app
+    newTag: "5.0.0"
+  - name: gestarafeto/alertas
+    newTag: "5.0.0"
+  - name: gestarafeto/frontend
+    newTag: "5.0.0"

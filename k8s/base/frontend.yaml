@@ -1,0 +1,69 @@
+# Front-end (Nginx sem privilegios). E o unico ponto de entrada HTTP da aplicacao:
+# serve a SPA e encaminha /api para o servico principal.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gestarafeto-frontend
+  labels: {app.kubernetes.io/name: gestarafeto-frontend, app.kubernetes.io/part-of: gestarafeto}
+spec:
+  selector: {app.kubernetes.io/name: gestarafeto-frontend}
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gestarafeto-frontend
+  labels: {app.kubernetes.io/name: gestarafeto-frontend, app.kubernetes.io/part-of: gestarafeto, app.kubernetes.io/component: frontend}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {app.kubernetes.io/name: gestarafeto-frontend}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: gestarafeto-frontend, app.kubernetes.io/part-of: gestarafeto, app.kubernetes.io/component: frontend}
+    spec:
+      # Sem isso o Kubernetes injeta variaveis como GESTARAFETO_ALERTAS_PORT=tcp://10.x.x.x:8081
+      # (uma por Service), que colidem com propriedades do Spring e impedem a aplicacao de subir.
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: frontend
+          image: gestarafeto/frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: cache, mountPath: /var/cache/nginx}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+        - {name: cache, emptyDir: {}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gestarafeto-frontend
+  labels: {app.kubernetes.io/name: gestarafeto-frontend, app.kubernetes.io/part-of: gestarafeto}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: gestarafeto-frontend}
