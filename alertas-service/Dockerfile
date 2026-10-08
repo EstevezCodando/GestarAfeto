@@ -22,5 +22,5 @@ ENV SPRING_PROFILES_ACTIVE=prod \
     JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
 EXPOSE 8081
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD wget -qO- http://127.0.0.1:8081/actuator/health/readiness >/dev/null || exit 1
+    CMD ["wget", "-q", "--spider", "http://127.0.0.1:8081/actuator/health/readiness"]
 ENTRYPOINT ["java", "-jar", "gestarafeto-alertas-0.0.1-SNAPSHOT.jar"]

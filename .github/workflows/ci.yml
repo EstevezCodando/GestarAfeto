@@ -1,0 +1,200 @@
+name: CI
+
+# Integracao continua: nada entra sem passar por analise estatica, testes, build das imagens,
+# validacao dos manifests e um teste de implantacao real em um cluster Kubernetes efemero.
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]   # tags de release sao tratadas pelo workflow CD
+  pull_request:
+  workflow_dispatch:
+
+# Permissoes minimas: o CI so le o repositorio.
+permissions:
+  contents: read
+
+# Uma nova execucao na mesma branch cancela a anterior (economiza minutos e evita corrida).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  segredos:
+    name: Varredura de segredos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # varre todo o historico, nao so o ultimo commit
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.2             detect --source /repo --no-banner --redact --verbose
+
+  backend:
+    name: Backend (${{ matrix.modulo.nome }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        modulo:
+          - { nome: principal, dir: . }
+          - { nome: alertas, dir: alertas-service }
+    defaults:
+      run:
+        working-directory: ${{ matrix.modulo.dir }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # `verify` encadeia: compilacao -> testes unitarios/integracao (Testcontainers usa o Docker do
+      # runner) -> cobertura JaCoCo -> analise estatica Checkstyle. Qualquer falha reprova o job.
+      - name: Compilar, testar e analisar
+        run: ./mvnw -B -ntp verify
+
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, xml.etree.ElementTree as ET
+          t = f = e = s = 0
+          for p in glob.glob("target/surefire-reports/TEST-*.xml"):
+              r = ET.parse(p).getroot()
+              t += int(r.get("tests", 0)); f += int(r.get("failures", 0))
+              e += int(r.get("errors", 0)); s += int(r.get("skipped", 0))
+          print(f"### Testes - ${{ matrix.modulo.nome }}")
+          print(f"| Total | Aprovados | Falhas | Erros | Ignorados |\n|---|---|---|---|---|")
+          print(f"| {t} | {t - f - e - s} | {f} | {e} | {s} |")
+          PY
+
+      - name: Publicar relatorios de teste e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-${{ matrix.modulo.nome }}
+          path: |
+            ${{ matrix.modulo.dir }}/target/surefire-reports
+            ${{ matrix.modulo.dir }}/target/site/jacoco
+          retention-days: 14
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # TypeScript em modo estrito (noUnusedLocals/Parameters) faz o papel de analise estatica.
+      - name: Analise estatica (tsc)
+        run: npm run typecheck
+      - name: Build de producao
+        run: npm run build
+
+  dockerfiles:
+    name: Lint dos Dockerfiles
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [Dockerfile, alertas-service/Dockerfile, frontend/Dockerfile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ matrix.dockerfile }}
+          failure-threshold: warning
+
+  manifests:
+    name: Validar manifests Kubernetes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Renderizar com Kustomize
+        run: kubectl kustomize k8s/overlays/local > rendered.yaml
+      - name: Validar esquema com kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          ./kubeconform -strict -summary -kubernetes-version 1.31.0 rendered.yaml
+
+  imagens:
+    name: Build das imagens Docker
+    needs: [backend, frontend, dockerfiles]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        imagem:
+          - { nome: app, contexto: ., dockerfile: Dockerfile }
+          - { nome: alertas, contexto: alertas-service, dockerfile: alertas-service/Dockerfile }
+          - { nome: frontend, contexto: frontend, dockerfile: frontend/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (sem publicar)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.imagem.contexto }}
+          file: ${{ matrix.imagem.dockerfile }}
+          push: false
+          tags: gestarafeto/${{ matrix.imagem.nome }}:ci
+          cache-from: type=gha,scope=${{ matrix.imagem.nome }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.imagem.nome }}
+
+  implantacao:
+    name: Teste de implantacao (kind)
+    needs: [imagens, manifests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cluster Kubernetes efemero
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Construir e carregar as imagens no cluster
+        env:
+          KIND_NODE: kind-control-plane
+          IMAGE_TAG: ci-${{ github.run_number }}
+        run: bash scripts/k8s-build-load.sh
+
+      - name: Implantar aplicacao e observabilidade
+        env:
+          KUBE_CONTEXT: kind-kind
+        run: bash scripts/k8s-up.sh
+
+      - name: Teste de fumaca ponta a ponta
+        run: |
+          kubectl --context kind-kind -n gestarafeto-prod port-forward svc/gestarafeto-app 18080:8080 &
+          kubectl --context kind-kind -n gestarafeto-prod port-forward svc/gestarafeto-frontend 13080:80 &
+          sleep 5
+          APP_URL=http://localhost:18080 FRONT_URL=http://localhost:13080 bash scripts/smoke.sh
+
+      - name: Registrar estado do cluster
+        if: always()
+        run: |
+          {
+            echo '### Estado do cluster apos a implantacao'
+            echo '```'
+            kubectl --context kind-kind -n gestarafeto-prod get pods,svc,hpa,pvc
+            kubectl --context kind-kind -n gestarafeto-obs get pods
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: |
+          kubectl --context kind-kind -n gestarafeto-prod describe pods | tail -n 200
+          kubectl --context kind-kind -n gestarafeto-prod logs -l app.kubernetes.io/part-of=gestarafeto --tail=80 --prefix --all-containers || true

@@ -34,7 +34,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: alertas
-          image: gestarafeto/alertas:latest
+          image: gestarafeto/alertas:0.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - {name: http, containerPort: 8081}

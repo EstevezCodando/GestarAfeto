@@ -1,0 +1,181 @@
+name: CD
+
+# Entrega continua. Dispara em tags de versao (v*) ou manualmente.
+#   1. valida os manifests;
+#   2. publica as imagens versionadas no GitHub Container Registry (GHCR);
+#   3. implanta essas MESMAS imagens em um cluster (kind) e roda o teste de fumaca;
+#   4. anexa os manifests ja renderizados a um GitHub Release, prontos para `kubectl apply -f`.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: "Versao a publicar (ex.: 5.0.1). Em tag, e derivada da propria tag."
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  REGISTRO: ghcr.io
+  PREFIXO: ghcr.io/${{ github.repository_owner }}/gestarafeto-
+
+jobs:
+  versao:
+    name: Definir versao
+    runs-on: ubuntu-latest
+    outputs:
+      versao: ${{ steps.v.outputs.versao }}
+    steps:
+      - id: v
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          ENTRADA: ${{ inputs.versao }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then v="${REF_NAME#v}"; else v="$ENTRADA"; fi
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]] || { echo "versao invalida: $v"; exit 1; }
+          echo "versao=$v" >> "$GITHUB_OUTPUT"
+
+  validar:
+    name: Validar manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: kubectl kustomize k8s/overlays/local > rendered.yaml
+      - run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          ./kubeconform -strict -summary -kubernetes-version 1.31.0 rendered.yaml
+
+  publicar:
+    name: Publicar imagem (${{ matrix.imagem.nome }})
+    needs: [versao, validar]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # unica permissao de escrita: enviar imagens ao GHCR
+    strategy:
+      fail-fast: false
+      matrix:
+        imagem:
+          - { nome: app, contexto: ., dockerfile: Dockerfile }
+          - { nome: alertas, contexto: alertas-service, dockerfile: alertas-service/Dockerfile }
+          - { nome: frontend, contexto: frontend, dockerfile: frontend/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRO }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build e push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.imagem.contexto }}
+          file: ${{ matrix.imagem.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.PREFIXO }}${{ matrix.imagem.nome }}:${{ needs.versao.outputs.versao }}
+            ${{ env.PREFIXO }}${{ matrix.imagem.nome }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.versao.outputs.versao }}
+          cache-from: type=gha,scope=${{ matrix.imagem.nome }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.imagem.nome }}
+
+  implantar:
+    name: Implantar e verificar (kind)
+    needs: [versao, publicar]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read           # puxar as imagens recem-publicadas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRO }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cluster Kubernetes efemero
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      # As imagens sao puxadas pelo runner (autenticado) e entregues ao no do kind: assim o
+      # cluster nao precisa de imagePullSecret mesmo com o pacote privado.
+      - name: Levar as imagens publicadas para o cluster
+        env:
+          VERSAO: ${{ needs.versao.outputs.versao }}
+        run: |
+          for img in app alertas frontend; do
+            docker pull "${PREFIXO}${img}:${VERSAO}"
+            kind load docker-image "${PREFIXO}${img}:${VERSAO}" --name kind
+          done
+
+      - name: Implantar
+        env:
+          KUBE_CONTEXT: kind-kind
+          IMAGE_TAG: ${{ needs.versao.outputs.versao }}
+          IMAGE_PREFIX: ${{ env.PREFIXO }}
+        run: bash scripts/k8s-up.sh
+
+      - name: Verificar a implantacao
+        run: |
+          kubectl --context kind-kind -n gestarafeto-prod get deploy -o wide
+          for d in gestarafeto-app gestarafeto-alertas gestarafeto-frontend; do
+            kubectl --context kind-kind -n gestarafeto-prod rollout status "deployment/$d" --timeout=120s
+          done
+          kubectl --context kind-kind -n gestarafeto-prod port-forward svc/gestarafeto-app 18080:8080 &
+          kubectl --context kind-kind -n gestarafeto-prod port-forward svc/gestarafeto-frontend 13080:80 &
+          sleep 5
+          APP_URL=http://localhost:18080 FRONT_URL=http://localhost:13080 bash scripts/smoke.sh
+
+      - name: Registrar resultado
+        if: always()
+        env:
+          VERSAO: ${{ needs.versao.outputs.versao }}
+          RESULTADO: ${{ job.status }}
+        run: |
+          {
+            echo "### Implantacao da versao ${VERSAO}: ${RESULTADO}"
+            echo '```'
+            kubectl --context kind-kind -n gestarafeto-prod get pods,hpa
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publicar manifests no Release
+    if: github.ref_type == 'tag'
+    needs: [versao, implantar]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # criar o Release e anexar o artefato
+    steps:
+      - uses: actions/checkout@v4
+      - name: Renderizar manifests com as imagens publicadas
+        env:
+          VERSAO: ${{ needs.versao.outputs.versao }}
+        run: |
+          mkdir -p k8s/overlays/.gerado
+          cat > k8s/overlays/.gerado/kustomization.yaml <<YAML
+          apiVersion: kustomize.config.k8s.io/v1beta1
+          kind: Kustomization
+          resources:
+            - ../local
+          images:
+            - {name: gestarafeto/app, newName: "${PREFIXO}app", newTag: "${VERSAO}"}
+            - {name: gestarafeto/alertas, newName: "${PREFIXO}alertas", newTag: "${VERSAO}"}
+            - {name: gestarafeto/frontend, newName: "${PREFIXO}frontend", newTag: "${VERSAO}"}
+          YAML
+          kubectl kustomize k8s/overlays/.gerado > "gestarafeto-${VERSAO}.yaml"
+      - name: Criar o Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: gestarafeto-${{ needs.versao.outputs.versao }}.yaml
+          generate_release_notes: true

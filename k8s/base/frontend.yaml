@@ -34,7 +34,7 @@ spec:
       securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: frontend
-          image: gestarafeto/frontend:latest
+          image: gestarafeto/frontend:0.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - {name: http, containerPort: 8080}

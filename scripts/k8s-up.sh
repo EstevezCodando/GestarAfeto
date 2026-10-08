@@ -8,12 +8,14 @@
 #   KUBE_CONTEXT  contexto do kubectl (padrao: docker-desktop)
 #   OVERLAY       overlay Kustomize (padrao: k8s/overlays/local)
 #   IMAGE_TAG     tag das imagens (padrao: conteudo de .image-tag, gravado por k8s-build-load.sh)
+#   IMAGE_PREFIX  prefixo do nome das imagens, ex.: ghcr.io/dono/gestarafeto- (padrao: gestarafeto/)
 #   SO_APLICAR    se definida, nao espera os rollouts terminarem
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 CTX="${KUBE_CONTEXT:-docker-desktop}"
 OVERLAY="${OVERLAY:-$RAIZ/k8s/overlays/local}"
+IMAGE_PREFIX="${IMAGE_PREFIX:-gestarafeto/}"
 K=(kubectl --context "$CTX")
 
 IMAGE_TAG="${IMAGE_TAG:-$(cat "$RAIZ/.image-tag" 2>/dev/null || true)}"
@@ -53,11 +55,11 @@ cat > "$TMP/kustomization.yaml" <<YAML
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../local
+  - ../$(basename "$OVERLAY")
 images:
-  - {name: gestarafeto/app, newTag: "$IMAGE_TAG"}
-  - {name: gestarafeto/alertas, newTag: "$IMAGE_TAG"}
-  - {name: gestarafeto/frontend, newTag: "$IMAGE_TAG"}
+  - {name: gestarafeto/app, newName: "${IMAGE_PREFIX}app", newTag: "$IMAGE_TAG"}
+  - {name: gestarafeto/alertas, newName: "${IMAGE_PREFIX}alertas", newTag: "$IMAGE_TAG"}
+  - {name: gestarafeto/frontend, newName: "${IMAGE_PREFIX}frontend", newTag: "$IMAGE_TAG"}
 YAML
 
 echo "== Aplicando manifests (overlay $OVERLAY, imagens :$IMAGE_TAG)"

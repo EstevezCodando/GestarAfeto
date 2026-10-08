@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "build:copy": "tsc -b && vite build --outDir ../src/main/resources/static"
