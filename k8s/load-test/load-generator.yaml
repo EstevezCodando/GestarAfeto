@@ -1,0 +1,46 @@
+# Gerador de carga para demonstrar o HPA. NAO faz parte do kustomization da aplicacao:
+# so e aplicado durante a demonstracao (kubectl apply -f) e removido depois.
+#
+#   kubectl --context docker-desktop apply -f k8s/load-test/load-generator.yaml
+#   kubectl --context docker-desktop -n gestarafeto-prod get hpa -w
+#   kubectl --context docker-desktop delete -f k8s/load-test/load-generator.yaml
+#
+# O rotulo component=load-test e o que as NetworkPolicies permitem alcançar o servico principal.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: gestarafeto-prod
+  labels: {app.kubernetes.io/name: load-generator, app.kubernetes.io/part-of: gestarafeto, app.kubernetes.io/component: load-test}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: load-generator}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: load-generator, app.kubernetes.io/part-of: gestarafeto, app.kubernetes.io/component: load-test}
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 65534, runAsGroup: 65534, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: carga
+          image: busybox:1.37
+          # 8 laços paralelos por pod, cada um martelando uma consulta que passa pelo banco.
+          command:
+            - sh
+            - -c
+            - |
+              for i in 1 2 3 4 5 6 7 8; do
+                ( while true; do
+                    wget -q -O /dev/null "http://gestarafeto-app:8080/api/procedimentos/paginado?size=50" || true
+                  done ) &
+              done
+              wait
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}

@@ -1,0 +1,19 @@
+# Contexto de build do servico principal: so pom.xml e src/ interessam.
+.git
+.github
+.idea
+.vscode
+.claude
+.env
+*.log
+target
+HELP.md
+alertas-service
+frontend
+docs
+demo
+deploy
+k8s
+scripts
+*.md
+*.pdf

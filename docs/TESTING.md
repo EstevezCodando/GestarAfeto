@@ -11,7 +11,44 @@ cd alertas-service
 .\mvnw.cmd test
 ```
 
-Total: **89 testes** — 31 no servico principal (1 ignorado sem Docker) e 58 no microsservico (5 ignorados sem Docker).
+Total: **146 testes** — 72 no servico principal e 74 no microsservico, todos aprovados e nenhum
+ignorado quando o Docker esta disponivel (sem Docker, 6 usam Testcontainers e sao ignorados).
+
+`mvnw verify` encadeia testes, cobertura JaCoCo (`target/site/jacoco/index.html`) e Checkstyle
+(`config/checkstyle.xml`; qualquer violacao reprova). Cobertura medida em 08/10/2026:
+
+| Modulo | Linhas | Instrucoes | Ramos |
+|---|---|---|---|
+| Servico principal | 77,0 % | 71,7 % | 48,7 % |
+| Alertas | 88,7 % | 89,7 % | 71,4 % |
+
+Alem da suite Java: `bash scripts/smoke.sh` (ponta a ponta contra servicos no ar) e, no front-end,
+`npm run typecheck` e `npm run build`.
+
+## Producao: o que cada teste novo protege (v5.0.0)
+
+Servico principal (e equivalentes no alertas, quando aplicavel):
+
+- `ObservabilidadeConfigTest` — sondas `/actuator/**` nao geram trace; o `X-Trace-Id` e devolvido
+  quando ha span e nao quebra a requisicao quando nao ha.
+- `ActuatorEExposicaoTest` / `ActuatorEConfiguracaoTest` — sondas de liveness e readiness
+  respondem `UP`; `env`, `beans`, `heapdump`, `threaddump` e `configprops` nao sao expostos;
+  nao existe usuario padrao do Spring Security (a senha gerada ia para o log).
+- `ConfiguracaoProducaoTest` — o perfil `prod` nao tem valor padrao para credenciais, valida o
+  esquema (`ddl-auto=validate`), esconde detalhes de saude, e a exportacao OTLP so liga por variavel.
+- `TratamentoDeErrosHttpTest` — rota inexistente 404, metodo errado 405, JSON malformado 400, id
+  de tipo errado 400, validacao 400, recurso inexistente 404; nenhuma resposta vaza stack trace.
+  Regressao de um defeito real (esses casos respondiam 500).
+- `FluxoApiPrincipalTest` — regressao dos fluxos essenciais pela API HTTP: ciclo de vida da
+  gestante, checklist (gerar, realizar, revisar, status) publicando eventos, consultas,
+  procedimentos, auditoria e entradas invalidas.
+- `ManifestosKubernetesTest` — politica dos manifests sem precisar de cluster: requests/limits e
+  probes em todo container, `runAsNonRoot`, `drop ALL`, `enableServiceLinks: false`, imagens sem
+  `latest` e com tag marcadora, HPAs coerentes, todo Service seleciona um workload, URLs do
+  ConfigMap apontam para Services existentes, nenhum `Secret` versionado e todas as chaves de
+  segredo referenciadas sao criadas por `scripts/k8s-up.sh`.
+
+No CI, os mesmos testes rodam em todo push/PR (`.github/workflows/ci.yml`); ver [`CICD.md`](CICD.md).
 
 ## Servico principal
 

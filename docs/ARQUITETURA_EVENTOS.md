@@ -505,9 +505,9 @@ cd alertas-service
 ### Conferir a topologia criada
 
 ```powershell
-docker exec gestarafeto-rabbitmq rabbitmqctl list_exchanges name type
-docker exec gestarafeto-rabbitmq rabbitmqctl list_queues name messages consumers
-docker exec gestarafeto-rabbitmq rabbitmqctl list_bindings source_name destination_name routing_key
+docker compose exec rabbitmq rabbitmqctl list_exchanges name type
+docker compose exec rabbitmq rabbitmqctl list_queues name messages consumers
+docker compose exec rabbitmq rabbitmqctl list_bindings source_name destination_name routing_key
 ```
 
 Painel web: `http://localhost:15672` (usuário e senha `gestarafeto`).

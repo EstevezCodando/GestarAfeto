@@ -35,3 +35,5 @@ build/
 
 ### VS Code ###
 .vscode/
+.image-tag
+k8s/overlays/.gerado/

@@ -56,6 +56,10 @@ public class RabbitProdutorConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
+        // O RabbitTemplate e criado a mao, entao a propriedade spring.rabbitmq.template.observation-enabled
+        // nao se aplica a ele. Ligado aqui para gerar o span de publicacao e injetar o traceparent
+        // nos cabecalhos da mensagem, o que permite ao consumidor continuar o mesmo trace.
+        template.setObservationEnabled(true);
 
         template.setConfirmCallback((correlation, ack, causa) -> {
             if (!ack) {
