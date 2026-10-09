@@ -1,6 +1,6 @@
 # GestarAfeto
 
-GestarAfeto e um sistema Spring Boot + React para acompanhamento pre-natal. Na entrega TP2/PB o foco foi a camada de persistencia real: PostgreSQL, migrations Flyway, mapeamento JPA revisado, repositories Spring Data, auditoria Envers, testes e documentacao rastreavel. Na entrega **TP3/PB**, o calculo de alertas foi extraido para um **microsservico proprio**, com banco e repositorio dedicados, integrado por REST com Spring Cloud OpenFeign e circuit breaker Resilience4j. Na entrega **TP4/PB**, a sincronizacao entre os dois servicos foi refatorada para uma **arquitetura orientada a eventos** com RabbitMQ e Spring AMQP: o servico principal publica fatos e segue, e o microsservico consome quando puder.
+GestarAfeto e um sistema Spring Boot + React para acompanhamento pre-natal. Na entrega TP2/PB o foco foi a camada de persistencia real: PostgreSQL, migrations Flyway, mapeamento JPA revisado, repositories Spring Data, auditoria Envers, testes e documentacao rastreavel. Na entrega **TP3/PB**, o calculo de alertas foi extraido para um **microsservico proprio**, com banco e repositorio dedicados, integrado por REST com Spring Cloud OpenFeign e circuit breaker Resilience4j. Na entrega **TP4/PB**, a sincronizacao entre os dois servicos foi refatorada para uma **arquitetura orientada a eventos** com RabbitMQ e Spring AMQP: o servico principal publica fatos e segue, e o microsservico consome quando puder. Na entrega **TP5/PB**, o sistema foi preparado para operar em um ambiente simulado de producao: conteinerizacao com Docker, orquestracao com Kubernetes, observabilidade com OpenTelemetry (Jaeger, Loki e Grafana), testes ampliados e pipelines de CI/CD no GitHub Actions.
 
 O sistema e composto por dois servicos autonomos e um broker de mensagens:
 
@@ -10,9 +10,18 @@ O sistema e composto por dois servicos autonomos e um broker de mensagens:
 | `gestarafeto-alertas` | 8081 | `gestarafeto_alertas` | Priorizacao do checklist em alertas acionaveis |
 | `rabbitmq` | 5672 / 15672 | — | Transporte dos eventos entre os dois servicos |
 
-## Producao simulada: Docker, Kubernetes, observabilidade e CI/CD (v5.0.0)
+## TP5/PB: producao simulada com Docker, Kubernetes, observabilidade e CI/CD (v5.0.0)
 
-Na entrega de producao, o sistema passou a rodar conteinerizado e orquestrado, com logs e traces centralizados e pipelines automatizados. Guia completo em [`docs/PRODUCAO.md`](docs/PRODUCAO.md).
+Nesta entrega o sistema passou a rodar conteinerizado e orquestrado, com logs e traces centralizados e pipelines automatizados. Guia completo em [`docs/PRODUCAO.md`](docs/PRODUCAO.md).
+
+### O que foi implementado na entrega
+
+- **Docker:** Dockerfiles multi-etapa para o servico principal, o microsservico de alertas e o front-end (Nginx), com usuario nao root, `.dockerignore`, health checks e perfil `app` no `compose.yaml`.
+- **Kubernetes:** manifests com Kustomize em dois namespaces (`gestarafeto-prod` e `gestarafeto-obs`): Deployments, StatefulSets com volumes persistentes, ConfigMap, Secrets gerados fora do Git, probes, requests/limits, HPA, PodDisruptionBudgets e NetworkPolicies. Scripts de build, implantacao e remocao em `scripts/`.
+- **Observabilidade:** instrumentacao com OpenTelemetry nos dois servicos, traces no Jaeger, logs no Loki e consulta no Grafana. O `trace_id` correlaciona logs e spans, e o trace atravessa HTTP, o cliente Feign e o RabbitMQ. Toda resposta HTTP devolve `X-Trace-Id`.
+- **Testes e qualidade:** de 89 para 146 testes (erros HTTP, sondas de saude, configuracao de producao, fluxo completo da API, politica dos manifests Kubernetes), cobertura com JaCoCo e analise estatica com Checkstyle.
+- **CI/CD:** workflows no GitHub Actions: o CI executa varredura de segredos, testes, Checkstyle, lint dos Dockerfiles, validacao dos manifests, build das imagens e implantacao em um cluster kind com teste de fumaca; o CD publica imagens no GHCR e anexa os manifests ao Release.
+- **Correcoes no codigo existente:** erros do cliente (rota inexistente, JSON malformado, id invalido) respondiam 500 e agora respondem 4xx; a senha gerada pelo Spring Security deixou de ir para o log; o trace passou a atravessar o RabbitMQ; o Testcontainers foi atualizado para funcionar com o Docker atual.
 
 ```mermaid
 flowchart LR
