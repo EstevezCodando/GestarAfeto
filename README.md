@@ -51,7 +51,7 @@ kubectl --context docker-desktop -n gestarafeto-prod get pods,hpa
 | Matriz de requisitos, evidencias, defeitos corrigidos, pendencias | [`docs/RASTREABILIDADE.md`](docs/RASTREABILIDADE.md) |
 | Historico de mudancas | [`CHANGELOG.md`](CHANGELOG.md) |
 
-> **Pendencia declarada:** os workflows do GitHub Actions foram validados estaticamente e seus comandos executados localmente, mas ainda nao rodaram no GitHub. Ver [`docs/CICD.md`](docs/CICD.md#4-como-validar-de-fato-passo-que-falta).
+> **CI/CD:** o CI roda no GitHub e esta verde (12 jobs, incluindo implantacao em kind). O CD so dispara em tag `vX.Y.Z` e ainda nao foi executado. Ver [`docs/CICD.md`](docs/CICD.md).
 
 ## Indice rapido
 

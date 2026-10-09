@@ -1,10 +1,12 @@
 # CI/CD com GitHub Actions
 
-> **Estado honesto:** os dois workflows foram escritos e validados estaticamente
-> (`actionlint`, sem erros), e **cada comando que eles executam foi rodado localmente com
-> sucesso**. Eles ainda **nao foram executados no GitHub**: isso depende de enviar a branch ao
-> repositorio. Ate ver as execucoes verdes na aba *Actions*, R5 permanece
-> "Implementado, nao validado" (ver [`RASTREABILIDADE.md`](RASTREABILIDADE.md)).
+> **Estado:** o **CI foi executado no GitHub e passou** (branch `tp5-implementa`, execucao
+> [37968816437](https://github.com/EstevezCodando/GestarAfeto/actions/runs/37968816437): 12 jobs
+> verdes, incluindo a implantacao em kind). A primeira execucao falhou com `exit code 126` nos
+> dois backends porque `mvnw` entrou no Git sem permissao de execucao (`100644`, efeito do
+> Windows); corrigido com `git update-index --chmod=+x`. O **CD ainda nao foi executado**: so
+> dispara em tag `vX.Y.Z` (ou manualmente) e publica imagens no GHCR; foi validado apenas
+> estaticamente (`actionlint`).
 
 ## 1. CI — `.github/workflows/ci.yml`
 
@@ -80,16 +82,17 @@ conceda acesso) em *Packages → Package settings* se for puxa-los fora do repos
 | workflows | `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint` |
 | implantacao | `bash scripts/k8s-build-load.sh && bash scripts/k8s-up.sh && bash scripts/smoke.sh` (com `port-forward`) |
 
-## 4. Como validar de fato (passo que falta)
+## 4. Como validar o CD (passo que falta)
+
+O CI ja foi validado (ver o topo). Falta executar o CD, o que **publica imagens no GHCR e cria
+um Release** (acoes visiveis publicamente), por isso nao foi disparado sem autorizacao:
 
 ```bash
-git push -u origin feature/devops-producao     # abre o CI
-# no GitHub: abrir um Pull Request para main e conferir a aba Actions (7 jobs verdes)
 git tag v5.0.0 && git push origin v5.0.0       # dispara o CD (publica imagens + Release)
 ```
 
-Anexe prints das execucoes aprovadas a [`RASTREABILIDADE.md`](RASTREABILIDADE.md) e so entao
-mude R5 para "Validado".
+Confira a aba *Actions* (5 jobs) e, se quiser os pacotes publicos, ajuste a visibilidade em
+*Packages*. So entao R5 passa a "Validado" por completo.
 
 ## 5. Limitacoes
 

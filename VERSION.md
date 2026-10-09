@@ -15,8 +15,8 @@
 
 ### Observacoes
 
-- Os workflows foram validados estaticamente e seus comandos executados localmente; a execucao
-  no GitHub depende de enviar a branch (ver `docs/CICD.md`).
+- O CI foi executado no GitHub e passou (12 jobs). O CD so dispara em tag e ainda nao foi
+  executado (ver `docs/CICD.md`).
 - Detalhes, evidencias, defeitos corrigidos e limitacoes: `docs/RASTREABILIDADE.md`.
 
 ## v4.0.0 - TP4/PB - Arquitetura orientada a eventos

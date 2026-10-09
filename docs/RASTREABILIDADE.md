@@ -14,12 +14,12 @@ Execucoes de 08/10/2026 em Windows 10, Docker Desktop 29.6 (Kubernetes v1.36, no
 | R1 | Docker | **Validado** | 3 Dockerfiles multi-etapa, `.dockerignore` por contexto, usuario nao root, `HEALTHCHECK`; `compose.yaml` (profile `app`) | `docker compose --profile app up -d --build` → 9 servicos `healthy`; `smoke.sh` OK (incl. proxy Nginx); `id` = `uid=1001(spring)`; `hadolint` sem avisos nos 3 arquivos |
 | R2 | Kubernetes | **Validado** | `k8s/base` + `observability` + overlay (39 recursos); namespaces, ConfigMap, Secrets gerados, PVCs, probes, requests/limits, HPA, PDB, NetworkPolicy | Deploy em Docker Desktop; `smoke.sh` OK; pod removido (30/30 OK); `kill 1` → reinicio do container; rollout 120/120 OK; dados do PostgreSQL sobrevivem; **HPA 2→6** sob carga; NetworkPolicy bloqueou pod intruso; `k8s-down`/`k8s-up` preservam dados |
 | R3 | Logs e rastreamento | **Validado** | OpenTelemetry + Jaeger + Loki + Grafana; `X-Trace-Id`; dashboard provisionado | Trace unico atravessando HTTP → RabbitMQ → alertas (4 spans, 2 servicos) em Compose **e** Kubernetes; logs dos dois servicos no Loki filtrados por `trace_id`; erro real (RabbitMQ parado) achado por servico; 0 ocorrencias de `password/secret/senha` nos logs |
-| R4 | Git/GitHub | **Validado** (publicacao pendente, ver §5) | Branch `feature/devops-producao`, commits descritivos sobre `main` (`git log main..HEAD`); `.gitignore`; `.env.example`; `CHANGELOG.md`; `VERSION.md` | `git log`; `gitleaks detect` em 6 commits: *no leaks found*. O `push` da branch nao foi feito (depende de credenciais do usuario) |
-| R5 | GitHub Actions | **Implementado, nao validado** | `ci.yml` (7 jobs) e `cd.yml` (5 jobs); permissoes minimas; GHCR via `GITHUB_TOKEN` | `actionlint`: sem erros. **Nenhuma execucao no GitHub ainda.** Cada comando dos jobs foi rodado localmente com sucesso (§3) |
+| R4 | Git/GitHub | **Validado** | Branch `tp5-implementa` publicada no GitHub, commits descritivos sobre `main` (`git log main..HEAD`), todos de autoria do proprio usuario; `.gitignore`; `.env.example`; `CHANGELOG.md`; `VERSION.md` | `git log`; `gitleaks detect` em 6 commits: *no leaks found*; gitleaks tambem passa no CI |
+| R5 | GitHub Actions | **CI validado; CD implementado, nao validado** | `ci.yml` (12 jobs na matriz) e `cd.yml` (5 jobs); permissoes minimas; GHCR via `GITHUB_TOKEN` | **CI executado no GitHub: run 37968816437, 12/12 jobs verdes** (testes, Checkstyle, hadolint, kubeconform, build das 3 imagens, implantacao em kind com smoke test). O CD so dispara em tag e nao foi executado; validado apenas com `actionlint` |
 | R6 | Testes | **Validado** | 146 testes automatizados (72 + 74), JaCoCo, Checkstyle; testes novos em 6 areas | `mvn verify` nos dois modulos: **146 executados, 146 aprovados, 0 falhas, 0 erros, 0 ignorados**; 0 violacoes Checkstyle |
 | R7 | Codigo adaptado | **Validado** | Mudancas em codigo, Dockerfiles, manifests, scripts, workflows (§4) | Imagens construidas a partir dele e executadas; testes verdes |
 | R8 | Documentacao | **Validado** | README, `PRODUCAO.md`, `OBSERVABILIDADE.md`, `CICD.md`, `DEMONSTRACAO_PRODUCAO.md`, este arquivo, `TESTING.md`, `CHANGELOG.md` | Comandos de build, deploy, escala, observabilidade, down/up e testes foram executados contra os arquivos reais |
-| R9 | Demonstracao operacional | **Implementado, nao validado** | `docs/DEMONSTRACAO_PRODUCAO.md` (10 etapas com comandos e resultados esperados) | Os comandos foram executados individualmente (§3), mas o roteiro **nao foi ensaiado de ponta a ponta** em sequencia, e o passo 10 depende das execucoes no GitHub |
+| R9 | Demonstracao operacional | **Implementado, nao validado** | `docs/DEMONSTRACAO_PRODUCAO.md` (10 etapas com comandos e resultados esperados) | Os comandos foram executados individualmente (§3) e o CI esta verde, mas o roteiro **nao foi ensaiado de ponta a ponta** em sequencia |
 
 ## 2. Diagnostico inicial (antes das mudancas)
 
@@ -107,13 +107,14 @@ baixa: camadas de servico/controladores de dominio so sao exercitadas pelos flux
 | 8 | Dashboard filtrava `detected_level="error"`; o Loki grava `ERROR` | Consulta contra o Loki real nao casava | `severity_text="ERROR"` |
 | 9 | `container_name` fixo no compose conflitava com containers antigos e impedia escalar | `docker compose up` falhou | Removido |
 | 10 | `HEALTHCHECK` em forma de shell (hadolint DL3025) | `hadolint` | Forma exec com `wget --spider` |
+| 11 | `mvnw` e `scripts/*.sh` entraram no Git sem bit de execucao (Windows): os jobs de backend do CI falharam com `exit code 126` | 1a execucao do CI no GitHub | `git update-index --chmod=+x`; CI passou a ficar verde |
 
 ## 5. Pendencias e limitacoes
 
 **Pendencias (dependem do usuario ou de acesso externo):**
 
-1. **Enviar a branch ao GitHub e executar os workflows.** `gh` nao esta autenticado e o push foi
-   deixado para o usuario. Sem isso, R5 e o passo 10 do roteiro (R9) nao podem ser "Validado".
+1. **Executar o CD** (tag `vX.Y.Z`), que publica no GHCR e cria o Release; so entao R5 fica
+   totalmente "Validado".
 2. Ensaiar o roteiro de ponta a ponta.
 
 **Limitacoes assumidas (nao sao defeitos escondidos):**
